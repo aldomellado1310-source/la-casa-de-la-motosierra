@@ -1,0 +1,30 @@
+rules_version = '2';
+
+// Reglas de Storage — fotos de producto, comprobantes y PDFs
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // Fotos de producto: lectura pública, escritura autenticada
+    // (el panel admin valida el rol en Firestore)
+    match /productos/{productoId}/{archivo} {
+      allow read: if true;
+      allow write: if request.auth != null
+        && request.resource.size < 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    // Comprobantes de transferencia: sube cualquiera (invitados incluidos),
+    // solo lectura autenticada (el admin los revisa)
+    match /comprobantes/{pedidoId}/{archivo} {
+      allow create: if request.resource.size < 10 * 1024 * 1024;
+      allow read: if request.auth != null;
+    }
+
+    // PDFs de cotización: los genera la Cloud Function (Admin SDK);
+    // se leen mediante URL firmada
+    match /cotizaciones/{archivo} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+  }
+}

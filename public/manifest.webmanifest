@@ -1,0 +1,18 @@
+{
+  "name": "La Casa de la Motosierra",
+  "short_name": "Motosierra",
+  "description": "Repuestos y maquinaria forestal en Puerto Aysén. Busca por marca y modelo, con stock real y despacho a todo Chile.",
+  "lang": "es-CL",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0E0F0E",
+  "theme_color": "#0E0F0E",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

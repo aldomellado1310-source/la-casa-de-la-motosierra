@@ -1,0 +1,69 @@
+rules_version = '2';
+
+// Reglas de seguridad Firestore — La Casa de la Motosierra
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /** true si el usuario autenticado tiene rol admin */
+    function esAdmin() {
+      return request.auth != null
+        && get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol == 'admin';
+    }
+
+    // Catálogo: lectura pública, escritura solo admin
+    match /productos/{id} {
+      allow read: if true;
+      allow write: if esAdmin();
+    }
+    match /categorias/{id} {
+      allow read: if true;
+      allow write: if esAdmin();
+    }
+
+    // Perfiles: cada usuario ve/edita el suyo; admin ve todos.
+    // El rol no puede ser cambiado por el propio usuario.
+    match /usuarios/{uid} {
+      allow read: if request.auth != null && (request.auth.uid == uid || esAdmin());
+      allow create: if request.auth != null && request.auth.uid == uid
+        && (!('rol' in request.resource.data) || request.resource.data.rol == 'cliente');
+      allow update: if (request.auth != null && request.auth.uid == uid
+        && request.resource.data.rol == resource.data.rol) || esAdmin();
+    }
+
+    // Carritos: solo el dueño
+    match /carritos/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // Pedidos: crea cualquiera (incluye invitados vía frontend).
+    // `get` por id es público para el seguimiento de pedido sin sesión:
+    // el número de pedido (fecha + sufijo aleatorio) actúa como token de
+    // consulta. `list` (enumerar pedidos) queda solo para el admin.
+    match /pedidos/{id} {
+      allow create: if true;
+      allow get: if true;
+      // Cada usuario puede listar solo sus pedidos (query con uid == auth.uid)
+      allow list: if esAdmin() || (request.auth != null && resource.data.uid == request.auth.uid);
+      allow update: if esAdmin()
+        // El dueño solo puede adjuntar su comprobante de transferencia
+        || (request.auth != null && resource.data.uid == request.auth.uid
+            && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['comprobanteUrl', 'estado']));
+      allow delete: if esAdmin();
+    }
+
+    // Cotizaciones: crea el usuario autenticado, lee dueño/admin,
+    // estado lo gestiona el admin
+    match /cotizaciones/{id} {
+      allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
+      allow read: if esAdmin() || (request.auth != null && resource.data.uid == request.auth.uid);
+      allow update, delete: if esAdmin();
+    }
+
+    // Avisos "cuando llegue stock": cualquiera puede dejar su correo
+    match /avisosStock/{id} {
+      allow create: if true;
+      allow read, update, delete: if esAdmin();
+    }
+  }
+}

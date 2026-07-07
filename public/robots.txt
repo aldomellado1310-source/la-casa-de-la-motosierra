@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /mi-cuenta
+Disallow: /checkout
+Disallow: /carrito
+
+# Reemplazar por el dominio definitivo al publicar
+Sitemap: https://lacasadelamotosierra.cl/sitemap.xml
