@@ -21,7 +21,7 @@ import type { Categoria } from '../types';
 const ENLACES_NAV: [string, string, boolean?][] = [
   ['/', 'Inicio'],
   ['/tienda', 'Repuestos'],
-  ['/tienda?compat=1', 'Buscar por compatibilidad', true],
+  ['/compatibilidad', 'Buscar por compatibilidad', true],
   ['/tienda?ofertas=1', 'Ofertas'],
   ['/marcas', 'Marcas'],
   ['/cotizaciones/nueva', 'Cotizaciones'],

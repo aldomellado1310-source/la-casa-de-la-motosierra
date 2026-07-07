@@ -30,6 +30,7 @@ const Admin = lazy(() => import('./pages/admin/Admin'));
 const Favoritos = lazy(() => import('./pages/Favoritos'));
 const Marcas = lazy(() => import('./pages/Marcas'));
 const Seguimiento = lazy(() => import('./pages/Seguimiento'));
+const Compatibilidad = lazy(() => import('./pages/Compatibilidad'));
 const Terminos = lazy(() => import('./pages/Terminos'));
 const Privacidad = lazy(() => import('./pages/Privacidad'));
 
@@ -74,6 +75,7 @@ export default function App() {
             <Route path="/favoritos" element={<Favoritos />} />
             <Route path="/marcas" element={<Marcas />} />
             <Route path="/seguimiento" element={<Seguimiento />} />
+            <Route path="/compatibilidad" element={<Compatibilidad />} />
             <Route path="/terminos" element={<Terminos />} />
             <Route path="/privacidad" element={<Privacidad />} />
             <Route path="/checkout" element={<Checkout />} />

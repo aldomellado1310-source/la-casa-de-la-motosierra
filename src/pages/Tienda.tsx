@@ -44,15 +44,6 @@ export default function Tienda() {
     });
   }, []);
 
-  // Al llegar desde "Buscar por compatibilidad" (?compat=1), lleva al
-  // usuario directo al selector de marca en vez de mostrarle la grilla
-  useEffect(() => {
-    if (params.get('compat') !== '1' || cargando) return;
-    const selector = document.getElementById('sel-marca');
-    selector?.scrollIntoView({ block: 'center', behavior: 'smooth' });
-    selector?.focus({ preventScroll: true });
-  }, [params, cargando]);
-
   // Aplicación de todos los filtros en memoria
   const filtrados = useMemo(() => {
     let lista = productos;
