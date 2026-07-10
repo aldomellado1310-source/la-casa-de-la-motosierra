@@ -7,6 +7,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import BuscadorCompatibilidad from '../components/BuscadorCompatibilidad';
+import EstadoError from '../components/EstadoError';
 import TarjetaProducto from '../components/TarjetaProducto';
 import {
   IconoCadena, IconoCamion, IconoCarrito, IconoDocumento, IconoEngranaje, IconoEscudo,
@@ -39,12 +40,19 @@ export default function Home() {
   const [productos, setProductos] = useState<Producto[]>([]);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [marcas, setMarcas] = useState<string[]>([]);
+  const [error, setError] = useState(false);
 
-  useEffect(() => {
-    void obtenerProductos().then(setProductos);
-    void obtenerCategorias().then(setCategorias);
-    void obtenerMarcasCompatibles().then(setMarcas);
-  }, []);
+  const cargar = () => {
+    setError(false);
+    Promise.all([obtenerProductos(), obtenerCategorias(), obtenerMarcasCompatibles()])
+      .then(([ps, cs, ms]) => {
+        setProductos(ps);
+        setCategorias(cs);
+        setMarcas(ms);
+      })
+      .catch(() => setError(true));
+  };
+  useEffect(cargar, []);
 
   const destacados = productos.filter((p) => p.destacado || (p.precioOferta && p.precioOferta < p.precio)).slice(0, 8);
   const conteoPorCategoria = (id: string) => productos.filter((p) => p.categoria === id).length;
@@ -54,9 +62,12 @@ export default function Home() {
       {/* ── Hero fotográfico ─────────────────────────────── */}
       <section className="relative isolate overflow-hidden bg-carbon">
         <img
-          src="/hero.jpg"
+          src="/hero.webp"
           alt=""
           aria-hidden="true"
+          fetchPriority="high"
+          width={1600}
+          height={840}
           className="animar-kenburns absolute inset-0 h-full w-full object-cover opacity-45"
         />
         {/* Velo para legibilidad del texto blanco */}
@@ -115,6 +126,13 @@ export default function Home() {
           </aside>
         </div>
       </section>
+
+      {/* Error de carga del catálogo (no bloquea el hero) */}
+      {error && (
+        <div className="mx-auto max-w-7xl px-4 pt-10">
+          <EstadoError onReintentar={cargar} />
+        </div>
+      )}
 
       {/* ── Categorías principales ───────────────────────── */}
       <section className="mx-auto max-w-7xl px-4 py-10">

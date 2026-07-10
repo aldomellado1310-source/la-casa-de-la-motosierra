@@ -2,7 +2,9 @@
 // enlazando al filtro estructurado de compatibilidad.
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import EstadoError from '../components/EstadoError';
 import { obtenerProductos } from '../services/productos';
+import { useSeo } from '../utils/seo';
 import type { Producto } from '../types';
 
 interface DatosMarca {
@@ -12,26 +14,35 @@ interface DatosMarca {
 }
 
 export default function Marcas() {
+  useSeo({
+    titulo: 'Repuestos por marca de máquina',
+    descripcion: 'Stihl, Husqvarna, Honda, Echo, Toyama y genéricas: elige la marca y el modelo de tu máquina para ver solo los repuestos compatibles.',
+  });
   const [marcas, setMarcas] = useState<DatosMarca[]>([]);
+  const [error, setError] = useState(false);
 
-  useEffect(() => {
-    void obtenerProductos().then((productos: Producto[]) => {
-      const mapa = new Map<string, { productos: number; modelos: Set<string> }>();
-      for (const p of productos) {
-        for (const m of p.marcasCompatibles) {
-          const datos = mapa.get(m) ?? { productos: 0, modelos: new Set<string>() };
-          datos.productos++;
-          p.modelosCompatibles.forEach((mod) => datos.modelos.add(mod));
-          mapa.set(m, datos);
+  const cargar = () => {
+    setError(false);
+    obtenerProductos()
+      .then((productos: Producto[]) => {
+        const mapa = new Map<string, { productos: number; modelos: Set<string> }>();
+        for (const p of productos) {
+          for (const m of p.marcasCompatibles) {
+            const datos = mapa.get(m) ?? { productos: 0, modelos: new Set<string>() };
+            datos.productos++;
+            p.modelosCompatibles.forEach((mod) => datos.modelos.add(mod));
+            mapa.set(m, datos);
+          }
         }
-      }
-      setMarcas(
-        [...mapa.entries()]
-          .map(([nombre, d]) => ({ nombre, productos: d.productos, modelos: [...d.modelos].sort() }))
-          .sort((a, b) => b.productos - a.productos),
-      );
-    });
-  }, []);
+        setMarcas(
+          [...mapa.entries()]
+            .map(([nombre, d]) => ({ nombre, productos: d.productos, modelos: [...d.modelos].sort() }))
+            .sort((a, b) => b.productos - a.productos),
+        );
+      })
+      .catch(() => setError(true));
+  };
+  useEffect(cargar, []);
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
@@ -40,6 +51,8 @@ export default function Marcas() {
         Elige la marca de tu máquina y filtra por modelo para ver solo los repuestos compatibles.
         ¿No aparece tu modelo? Escríbenos por WhatsApp y lo verificamos por ti.
       </p>
+
+      {error && <EstadoError onReintentar={cargar} />}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {marcas.map((m) => (

@@ -6,10 +6,13 @@
 import { useEffect, useState } from 'react';
 import { obtenerTodosLosPedidos } from '../../services/pedidos';
 import { obtenerTodasLasCotizaciones } from '../../services/cotizaciones';
-import { invalidarCacheProductos, obtenerProductos } from '../../services/productos';
+import {
+  invalidarCacheProductos, marcarAvisoNotificado, obtenerAvisosPendientes, obtenerProductos,
+} from '../../services/productos';
 import { formatoCLP } from '../../utils/precio';
 import BadgeStock from '../../components/BadgeStock';
-import type { Cotizacion, Pedido, Producto } from '../../types';
+import EstadoError from '../../components/EstadoError';
+import type { AvisoStock, Cotizacion, Pedido, Producto } from '../../types';
 
 /** Estados que cuentan como venta concretada */
 const ESTADOS_VENTA = ['pagado', 'preparando', 'despachado', 'listo_retiro', 'entregado'];
@@ -27,22 +30,39 @@ export default function AdminResumen({ irA }: Props) {
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [cotizaciones, setCotizaciones] = useState<Cotizacion[]>([]);
   const [productos, setProductos] = useState<Producto[]>([]);
+  const [avisos, setAvisos] = useState<AvisoStock[]>([]);
   const [cargando, setCargando] = useState(true);
+  const [error, setError] = useState(false);
 
-  useEffect(() => {
+  const cargar = () => {
+    setCargando(true);
+    setError(false);
     invalidarCacheProductos();
-    void Promise.all([
+    Promise.all([
       obtenerTodosLosPedidos(),
       obtenerTodasLasCotizaciones(),
       obtenerProductos(true),
-    ]).then(([ps, cs, prods]) => {
-      setPedidos(ps);
-      setCotizaciones(cs);
-      setProductos(prods);
-      setCargando(false);
-    });
-  }, []);
+      obtenerAvisosPendientes(),
+    ])
+      .then(([ps, cs, prods, avs]) => {
+        setPedidos(ps);
+        setCotizaciones(cs);
+        setProductos(prods);
+        setAvisos(avs);
+      })
+      .catch(() => setError(true))
+      .finally(() => setCargando(false));
+  };
+  useEffect(cargar, []);
 
+  const marcarAvisado = async (id: string) => {
+    await marcarAvisoNotificado(id);
+    setAvisos((prev) => prev.filter((a) => a.id !== id));
+  };
+
+  if (error) {
+    return <EstadoError onReintentar={cargar} />;
+  }
   if (cargando) {
     return <p className="text-sm text-gris-600">Cargando resumen…</p>;
   }
@@ -142,6 +162,42 @@ export default function AdminResumen({ irA }: Props) {
               {stockCritico.length > 6 && (
                 <li className="pt-2 text-xs text-gris-600">y {stockCritico.length - 6} más…</li>
               )}
+            </ul>
+          )}
+        </section>
+
+        {/* Avisos "cuando llegue stock" pendientes */}
+        <section className="tarjeta">
+          <h2 className="mb-3 font-bold">Avisos de stock pendientes</h2>
+          {avisos.length === 0 ? (
+            <p className="text-sm text-gris-600">
+              Nadie espera aviso de reposición. Los clientes que usan “Avísame cuando llegue” aparecen aquí.
+            </p>
+          ) : (
+            <ul className="divide-y divide-borde">
+              {avisos.map((a) => {
+                const producto = productos.find((p) => p.id === a.productoId);
+                const disponible = (producto?.stock ?? 0) > 0;
+                return (
+                  <li key={a.id} className="flex items-center justify-between gap-3 py-2 text-sm">
+                    <span className="min-w-0">
+                      <span className="font-mono text-xs font-bold">{a.sku}</span>
+                      <a href={`mailto:${a.email}`} className="block text-xs text-verde hover:underline">{a.email}</a>
+                      {disponible && (
+                        <span className="mt-0.5 inline-block rounded-full bg-verde-badge px-2 py-0.5 text-[10px] font-bold text-verde-oscuro">
+                          Ya hay stock — avisar
+                        </span>
+                      )}
+                    </span>
+                    <button
+                      onClick={() => void marcarAvisado(a.id)}
+                      className="shrink-0 text-xs font-semibold text-verde hover:underline"
+                    >
+                      Marcar avisado
+                    </button>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </section>

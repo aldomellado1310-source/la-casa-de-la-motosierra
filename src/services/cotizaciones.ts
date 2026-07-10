@@ -3,10 +3,11 @@
 // correlativo, seguimiento de estado y generación de PDF.
 // ============================================================
 import {
-  collection, doc, getDocs, orderBy, query, setDoc, updateDoc, where,
+  collection, doc, getDocs, orderBy, query, runTransaction, setDoc, updateDoc, where,
 } from 'firebase/firestore';
 import { MODO_DEMO, db } from '../config/firebase';
 import { desglosarIVA } from '../utils/precio';
+import { crearPedido } from './pedidos';
 import type { Cotizacion, EstadoCotizacion, ItemCarrito, Usuario } from '../types';
 
 const cotizacionesDemo: Cotizacion[] = [];
@@ -15,17 +16,22 @@ let correlativoDemo = 0;
 /** Días de validez de una cotización */
 const DIAS_VALIDEZ = 15;
 
-/** Genera el folio COT-AAAA-NNNN */
+/** Genera el folio COT-AAAA-NNNN, correlativo por año */
 async function generarFolio(): Promise<string> {
   const anio = new Date().getFullYear();
   let correlativo: number;
   if (MODO_DEMO) {
     correlativo = ++correlativoDemo;
   } else {
-    // Correlativo simple basado en el número de cotizaciones del año.
-    // Para alta concurrencia conviene moverlo a una transacción/Cloud Function.
-    const snap = await getDocs(collection(db!, 'cotizaciones'));
-    correlativo = snap.size + 1;
+    // Contador en contadores/cotizaciones (un campo por año); la
+    // transacción evita folios duplicados con solicitudes simultáneas
+    const refContador = doc(db!, 'contadores', 'cotizaciones');
+    correlativo = await runTransaction(db!, async (tx) => {
+      const snap = await tx.get(refContador);
+      const actual = (snap.data()?.[String(anio)] as number | undefined) ?? 0;
+      tx.set(refContador, { [String(anio)]: actual + 1 }, { merge: true });
+      return actual + 1;
+    });
   }
   return `COT-${anio}-${String(correlativo).padStart(4, '0')}`;
 }
@@ -85,6 +91,30 @@ export async function obtenerTodasLasCotizaciones(): Promise<Cotizacion[]> {
   if (MODO_DEMO) return [...cotizacionesDemo].sort((a, b) => b.fecha.localeCompare(a.fecha));
   const snap = await getDocs(query(collection(db!, 'cotizaciones'), orderBy('fecha', 'desc')));
   return snap.docs.map((d) => ({ ...(d.data() as Cotizacion), id: d.id }));
+}
+
+/**
+ * Convierte una cotización en un pedido pendiente de pago (admin).
+ * Por defecto queda como transferencia + retiro en tienda; el admin
+ * coordina despacho y pago con el cliente. Marca la cotización
+ * como 'convertida' y devuelve el id del pedido creado.
+ */
+export async function convertirCotizacionEnPedido(cotizacion: Cotizacion): Promise<string> {
+  const pedidoId = await crearPedido({
+    uid: cotizacion.uid,
+    nombreCliente: cotizacion.razonSocial ?? cotizacion.nombreCliente,
+    emailCliente: cotizacion.emailCliente,
+    items: cotizacion.items,
+    subtotal: cotizacion.total,
+    costoEnvio: 0,
+    total: cotizacion.total,
+    metodoPago: 'transferencia',
+    metodoEnvio: 'retiro_tienda',
+    estado: 'pendiente_pago',
+    fecha: new Date().toISOString(),
+  });
+  await actualizarEstadoCotizacion(cotizacion.id, 'convertida');
+  return pedidoId;
 }
 
 /** Cambia el estado de una cotización (admin) */

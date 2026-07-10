@@ -261,30 +261,31 @@ export default function AdminProductos() {
           </div>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <div>
-              <label className="etiqueta">SKU</label>
-              <input required value={editando.sku} onChange={(e) => setEditando({ ...editando, sku: e.target.value })} className="campo" />
+              <label className="etiqueta" htmlFor="prod-sku">SKU</label>
+              <input id="prod-sku" required value={editando.sku} onChange={(e) => setEditando({ ...editando, sku: e.target.value })} className="campo" />
             </div>
             <div className="lg:col-span-3">
-              <label className="etiqueta">Nombre</label>
-              <input required value={editando.nombre} onChange={(e) => setEditando({ ...editando, nombre: e.target.value })} className="campo" />
+              <label className="etiqueta" htmlFor="prod-nombre">Nombre</label>
+              <input id="prod-nombre" required value={editando.nombre} onChange={(e) => setEditando({ ...editando, nombre: e.target.value })} className="campo" />
             </div>
             <div>
-              <label className="etiqueta">Categoría</label>
-              <select value={editando.categoria} onChange={(e) => setEditando({ ...editando, categoria: e.target.value })} className="campo">
+              <label className="etiqueta" htmlFor="prod-categoria">Categoría</label>
+              <select id="prod-categoria" value={editando.categoria} onChange={(e) => setEditando({ ...editando, categoria: e.target.value })} className="campo">
                 {categorias.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
               </select>
             </div>
             <div>
-              <label className="etiqueta">Subcategoría</label>
-              <input value={editando.subcategoria} onChange={(e) => setEditando({ ...editando, subcategoria: e.target.value })} className="campo" />
+              <label className="etiqueta" htmlFor="prod-subcategoria">Subcategoría</label>
+              <input id="prod-subcategoria" value={editando.subcategoria} onChange={(e) => setEditando({ ...editando, subcategoria: e.target.value })} className="campo" />
             </div>
             <div>
-              <label className="etiqueta">Precio (CLP)</label>
-              <input type="number" min={0} required value={editando.precio} onChange={(e) => setEditando({ ...editando, precio: parseInt(e.target.value, 10) || 0 })} className="campo" />
+              <label className="etiqueta" htmlFor="prod-precio">Precio (CLP)</label>
+              <input id="prod-precio" type="number" min={0} required value={editando.precio} onChange={(e) => setEditando({ ...editando, precio: parseInt(e.target.value, 10) || 0 })} className="campo" />
             </div>
             <div>
-              <label className="etiqueta">Precio oferta (CLP)</label>
+              <label className="etiqueta" htmlFor="prod-oferta">Precio oferta (CLP)</label>
               <input
+                id="prod-oferta"
                 type="number"
                 min={0}
                 value={editando.precioOferta ?? ''}
@@ -302,16 +303,17 @@ export default function AdminProductos() {
               </p>
             </div>
             <div>
-              <label className="etiqueta">Stock</label>
-              <input type="number" min={0} required value={editando.stock} onChange={(e) => setEditando({ ...editando, stock: parseInt(e.target.value, 10) || 0 })} className="campo" />
+              <label className="etiqueta" htmlFor="prod-stock">Stock</label>
+              <input id="prod-stock" type="number" min={0} required value={editando.stock} onChange={(e) => setEditando({ ...editando, stock: parseInt(e.target.value, 10) || 0 })} className="campo" />
             </div>
             <div className="sm:col-span-2 lg:col-span-4">
-              <label className="etiqueta">Descripción</label>
-              <textarea rows={2} value={editando.descripcion} onChange={(e) => setEditando({ ...editando, descripcion: e.target.value })} className="campo" />
+              <label className="etiqueta" htmlFor="prod-descripcion">Descripción</label>
+              <textarea id="prod-descripcion" rows={2} value={editando.descripcion} onChange={(e) => setEditando({ ...editando, descripcion: e.target.value })} className="campo" />
             </div>
             <div className="sm:col-span-2">
-              <label className="etiqueta">Marcas compatibles (separadas por coma)</label>
+              <label className="etiqueta" htmlFor="prod-marcas">Marcas compatibles (separadas por coma)</label>
               <input
+                id="prod-marcas"
                 value={editando.marcasCompatibles.join(', ')}
                 onChange={(e) => setEditando({ ...editando, marcasCompatibles: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) })}
                 placeholder="Stihl, Husqvarna"
@@ -319,8 +321,9 @@ export default function AdminProductos() {
               />
             </div>
             <div className="sm:col-span-2">
-              <label className="etiqueta">Modelos compatibles (separados por coma)</label>
+              <label className="etiqueta" htmlFor="prod-modelos">Modelos compatibles (separados por coma)</label>
               <input
+                id="prod-modelos"
                 value={editando.modelosCompatibles.join(', ')}
                 onChange={(e) => setEditando({ ...editando, modelosCompatibles: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) })}
                 placeholder="MS 250, 445"
@@ -365,7 +368,7 @@ export default function AdminProductos() {
 
           {/* Fotos */}
           <div>
-            <label className="etiqueta">Fotos</label>
+            <p className="etiqueta">Fotos</p>
             <div className="flex flex-wrap items-center gap-2">
               {editando.fotos.map((f, i) => (
                 <div key={f} className="relative">

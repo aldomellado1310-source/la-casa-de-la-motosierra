@@ -8,6 +8,7 @@ import {
   GoogleAuthProvider,
   createUserWithEmailAndPassword,
   onAuthStateChanged,
+  sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signInWithPopup,
   signOut,
@@ -32,6 +33,8 @@ interface EstadoAuth {
   }) => Promise<void>;
   ingresar: (email: string, password: string) => Promise<void>;
   ingresarConGoogle: () => Promise<void>;
+  /** Envía el correo de recuperación de contraseña (Firebase Auth) */
+  recuperarPassword: (email: string) => Promise<void>;
   salir: () => Promise<void>;
   actualizarPerfil: (datos: Partial<Usuario>) => Promise<void>;
   agregarDireccion: (dir: Omit<Direccion, 'id'>) => Promise<void>;
@@ -143,7 +146,14 @@ export const useAuth = create<EstadoAuth>((set, get) => ({
       set({ usuario: demo.usuario });
       return;
     }
-    await signInWithEmailAndPassword(auth!, email, password);
+    // Cargar el perfil de inmediato: si se esperara a onAuthStateChanged,
+    // el código que corre justo después del login vería usuario = null
+    const cred = await signInWithEmailAndPassword(auth!, email, password);
+    const perfil = await cargarPerfil(cred.user.uid, {
+      nombre: cred.user.displayName ?? '',
+      email: cred.user.email ?? '',
+    });
+    set({ usuario: perfil, cargando: false });
   },
 
   ingresarConGoogle: async () => {
@@ -153,7 +163,19 @@ export const useAuth = create<EstadoAuth>((set, get) => ({
       set({ usuario });
       return;
     }
-    await signInWithPopup(auth!, new GoogleAuthProvider());
+    const cred = await signInWithPopup(auth!, new GoogleAuthProvider());
+    const perfil = await cargarPerfil(cred.user.uid, {
+      nombre: cred.user.displayName ?? '',
+      email: cred.user.email ?? '',
+    });
+    set({ usuario: perfil, cargando: false });
+  },
+
+  recuperarPassword: async (email) => {
+    if (MODO_DEMO) {
+      throw new Error('En modo demo no hay recuperación de contraseña: usa la clave demo1234.');
+    }
+    await sendPasswordResetEmail(auth!, email);
   },
 
   salir: async () => {

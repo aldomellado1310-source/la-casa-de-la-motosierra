@@ -3,15 +3,20 @@ import { Link } from 'react-router-dom';
 import { WHATSAPP_NUMERO } from '../config/firebase';
 import LogoLCM from '../components/LogoLCM';
 import { IconoEscudo, IconoLlave, IconoPin, IconoReloj, IconoWhatsApp } from '../components/Iconos';
+import { useSeo } from '../utils/seo';
 
 export default function Nosotros() {
+  useSeo({
+    titulo: 'Nosotros — tienda forestal de Puerto Aysén',
+    descripcion: 'Tienda local de repuestos y maquinaria forestal en Puerto Aysén: stock real en bodega, servicio técnico y despacho a todo Chile. Economía para la Gente de Aysén.',
+  });
   return (
     <div>
       {/* Presentación */}
       <section className="mx-auto max-w-3xl px-4 py-12">
         <div className="mb-10 flex flex-col items-center gap-3 text-center">
           <LogoLCM conBajada className="scale-125" />
-          <p className="mt-3 font-display text-lg font-semibold uppercase tracking-wide text-naranja">
+          <p className="mt-3 font-display text-lg font-semibold uppercase tracking-wide text-naranja-oscuro">
             “Economía para la Gente de Aysén”
           </p>
         </div>

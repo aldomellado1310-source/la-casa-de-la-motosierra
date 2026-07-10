@@ -150,3 +150,22 @@ export function IconoDocumento({ className = base }: PropsIcono) {
     </svg>
   );
 }
+
+export function IconoCheck({ className = base }: PropsIcono) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M8 12.5l2.5 2.5L16 9.5" />
+    </svg>
+  );
+}
+
+export function IconoAlerta({ className = base }: PropsIcono) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 3L2.5 20h19z" />
+      <path d="M12 9.5v5" />
+      <circle cx="12" cy="17" r="0.4" fill="currentColor" />
+    </svg>
+  );
+}

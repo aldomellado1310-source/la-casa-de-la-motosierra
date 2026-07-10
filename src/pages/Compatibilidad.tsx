@@ -6,6 +6,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import BuscadorCompatibilidad from '../components/BuscadorCompatibilidad';
+import EstadoError from '../components/EstadoError';
 import { IconoEngranaje, IconoWhatsApp } from '../components/Iconos';
 import { WHATSAPP_NUMERO } from '../config/firebase';
 import { obtenerProductos } from '../services/productos';
@@ -20,9 +21,13 @@ export default function Compatibilidad() {
   });
 
   const [productos, setProductos] = useState<Producto[]>([]);
-  useEffect(() => {
-    void obtenerProductos().then(setProductos);
-  }, []);
+  const [error, setError] = useState(false);
+
+  const cargar = () => {
+    setError(false);
+    obtenerProductos().then(setProductos).catch(() => setError(true));
+  };
+  useEffect(cargar, []);
 
   // Marcas con su cantidad de repuestos, para la exploración directa
   const marcas = [...productos.reduce((mapa, p) => {
@@ -69,6 +74,7 @@ export default function Compatibilidad() {
       {/* Exploración directa por marca */}
       <section className="mx-auto max-w-4xl px-4 pb-10">
         <h2 className="titulo-seccion mb-4 text-xl sm:text-2xl">O parte por la marca</h2>
+        {error && <EstadoError onReintentar={cargar} />}
         <div className="flex flex-wrap gap-2.5">
           {marcas.map(([m, n]) => (
             <Link

@@ -5,6 +5,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import BadgeStock from '../components/BadgeStock';
+import EstadoError from '../components/EstadoError';
 import GaleriaFotos from '../components/GaleriaFotos';
 import TablaVolumen from '../components/TablaVolumen';
 import { obtenerProducto, obtenerProductos, registrarAvisoStock } from '../services/productos';
@@ -40,6 +41,8 @@ export default function Producto() {
   const [producto, setProducto] = useState<TipoProducto | null>(null);
   const [relacionados, setRelacionados] = useState<TipoProducto[]>([]);
   const [cargando, setCargando] = useState(true);
+  const [error, setError] = useState(false);
+  const [reintento, setReintento] = useState(0);
   const [cantidad, setCantidad] = useState(1);
   const [agregado, setAgregado] = useState(false);
   const [emailAviso, setEmailAviso] = useState('');
@@ -51,12 +54,14 @@ export default function Producto() {
     descripcion: producto
       ? `${producto.descripcion.slice(0, 150)} SKU ${producto.sku}. Despacho a todo Chile desde Puerto Aysén.`
       : 'Repuestos forestales con despacho a todo Chile.',
+    imagen: producto?.fotos[0],
     jsonLd: producto ? jsonLdProducto(producto) : undefined,
   });
 
   useEffect(() => {
     if (!id) return;
     setCargando(true);
+    setError(false);
     void obtenerProducto(id).then(async (p) => {
       setProducto(p);
       setCargando(false);
@@ -85,9 +90,19 @@ export default function Producto() {
           .slice(0, 4)
           .map(({ x }) => x),
       );
+    }).catch(() => {
+      setError(true);
+      setCargando(false);
     });
-  }, [id]);
+  }, [id, reintento]);
 
+  if (error) {
+    return (
+      <div className="mx-auto max-w-7xl px-4 py-16">
+        <EstadoError onReintentar={() => setReintento((n) => n + 1)} />
+      </div>
+    );
+  }
   if (cargando) {
     return <div className="mx-auto max-w-7xl px-4 py-16 text-center text-verde">Cargando producto…</div>;
   }
@@ -216,6 +231,7 @@ export default function Producto() {
                     value={emailAviso}
                     onChange={(e) => setEmailAviso(e.target.value)}
                     placeholder="tu@correo.cl"
+                    aria-label="Correo para avisarte cuando vuelva el stock"
                     className="campo flex-1"
                   />
                   <button type="submit" className="btn-primario">Avísame cuando llegue</button>

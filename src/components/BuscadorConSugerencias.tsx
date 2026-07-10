@@ -1,7 +1,8 @@
 // ============================================================
 // Buscador de texto con autocompletado: sugiere productos con
 // foto, nombre y precio mientras se escribe (debounce 200 ms).
-// Enter → resultados en la tienda · clic en sugerencia → ficha.
+// Enter → resultados en la tienda · clic/Enter en sugerencia → ficha.
+// Patrón combobox accesible: flechas para recorrer, Esc cierra.
 // ============================================================
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -17,6 +18,7 @@ export default function BuscadorConSugerencias() {
   const [texto, setTexto] = useState('');
   const [sugerencias, setSugerencias] = useState<Producto[]>([]);
   const [abierto, setAbierto] = useState(false);
+  const [activa, setActiva] = useState(-1); // sugerencia resaltada con el teclado
   const contenedor = useRef<HTMLDivElement>(null);
 
   // Búsqueda con debounce mientras se escribe
@@ -33,6 +35,9 @@ export default function BuscadorConSugerencias() {
     }, 200);
     return () => clearTimeout(timer);
   }, [texto]);
+
+  // Al cambiar las sugerencias se pierde el resaltado
+  useEffect(() => setActiva(-1), [sugerencias]);
 
   // Cierra el desplegable al hacer clic fuera
   useEffect(() => {
@@ -57,6 +62,29 @@ export default function BuscadorConSugerencias() {
     navigate(`/producto/${id}`);
   };
 
+  /** Navegación por teclado dentro de las sugerencias */
+  const alTeclear = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Escape') {
+      setAbierto(false);
+      setActiva(-1);
+      return;
+    }
+    if (!abierto || sugerencias.length === 0) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setActiva((i) => (i + 1) % sugerencias.length);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setActiva((i) => (i <= 0 ? sugerencias.length - 1 : i - 1));
+    } else if (e.key === 'Enter' && activa >= 0) {
+      // Con una sugerencia resaltada, Enter abre la ficha (no el submit)
+      e.preventDefault();
+      irAProducto(sugerencias[activa].id);
+    }
+  };
+
+  const desplegableVisible = abierto && sugerencias.length > 0;
+
   return (
     <div ref={contenedor} className="relative w-full">
       <form onSubmit={irATienda} role="search">
@@ -66,9 +94,14 @@ export default function BuscadorConSugerencias() {
             value={texto}
             onChange={(e) => setTexto(e.target.value)}
             onFocus={() => sugerencias.length > 0 && setAbierto(true)}
+            onKeyDown={alTeclear}
             placeholder="Buscar por nombre, SKU o producto…"
             aria-label="Buscar productos"
-            aria-expanded={abierto}
+            role="combobox"
+            aria-expanded={desplegableVisible}
+            aria-controls="lista-sugerencias"
+            aria-autocomplete="list"
+            aria-activedescendant={activa >= 0 ? `sugerencia-${sugerencias[activa].id}` : undefined}
             autoComplete="off"
             className="min-h-[44px] w-full border-0 px-4 text-base outline-none placeholder:text-gris-600 md:text-sm"
           />
@@ -84,32 +117,36 @@ export default function BuscadorConSugerencias() {
       </form>
 
       {/* Sugerencias */}
-      {abierto && sugerencias.length > 0 && (
-        <ul className="animar-entrada absolute left-0 right-0 top-full z-flotante mt-1 overflow-hidden rounded-xl border border-borde bg-white shadow-tarjeta">
-          {sugerencias.map((p) => (
-            <li key={p.id}>
-              <button
+      {desplegableVisible && (
+        <div className="animar-entrada absolute left-0 right-0 top-full z-flotante mt-1 overflow-hidden rounded-xl border border-borde bg-white shadow-tarjeta">
+          <ul id="lista-sugerencias" role="listbox" aria-label="Sugerencias de productos">
+            {sugerencias.map((p, i) => (
+              <li
+                key={p.id}
+                id={`sugerencia-${p.id}`}
+                role="option"
+                aria-selected={i === activa}
+                onMouseDown={(e) => e.preventDefault()}
                 onClick={() => irAProducto(p.id)}
-                className="flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-gris-fondo"
+                onMouseEnter={() => setActiva(i)}
+                className={`flex cursor-pointer items-center gap-3 px-3 py-2.5 transition-colors ${i === activa ? 'bg-gris-fondo' : ''}`}
               >
-                <img src={p.fotos[0]} alt="" width={40} height={40} className="h-10 w-10 shrink-0 rounded-lg border border-borde object-cover" />
+                <img src={p.fotos[0]} alt="" loading="lazy" width={40} height={40} className="h-10 w-10 shrink-0 rounded-lg border border-borde object-cover" />
                 <span className="min-w-0 flex-1">
                   <span className="line-clamp-1 text-sm font-semibold text-grafito">{p.nombre}</span>
                   <span className="text-xs text-gris-600">SKU {p.sku}</span>
                 </span>
                 <span className="shrink-0 text-sm font-bold text-grafito">{formatoCLP(precioVigente(p))}</span>
-              </button>
-            </li>
-          ))}
-          <li className="border-t border-borde">
-            <button
-              onClick={() => { setAbierto(false); navigate(`/tienda?q=${encodeURIComponent(texto.trim())}`); setTexto(''); }}
-              className="w-full px-3 py-2.5 text-center text-sm font-semibold text-verde hover:bg-gris-fondo"
-            >
-              Ver todos los resultados de “{texto.trim()}” →
-            </button>
-          </li>
-        </ul>
+              </li>
+            ))}
+          </ul>
+          <button
+            onClick={() => { setAbierto(false); navigate(`/tienda?q=${encodeURIComponent(texto.trim())}`); setTexto(''); }}
+            className="w-full border-t border-borde px-3 py-2.5 text-center text-sm font-semibold text-verde hover:bg-gris-fondo"
+          >
+            Ver todos los resultados de “{texto.trim()}” →
+          </button>
+        </div>
       )}
     </div>
   );

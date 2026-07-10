@@ -6,7 +6,7 @@
 //    hash de Vite), rellenando el caché en la primera visita.
 // Subir la versión invalida los cachés antiguos.
 // ============================================================
-const VERSION = 'lcm-v1';
+const VERSION = 'lcm-v2';
 const APP_SHELL = ['/', '/index.html', '/favicon.svg', '/manifest.webmanifest'];
 
 self.addEventListener('install', (evento) => {
@@ -30,7 +30,7 @@ function esAssetCacheable(url) {
     url.origin === self.location.origin &&
     (url.pathname.startsWith('/assets/') ||
       url.pathname.startsWith('/productos/') ||
-      url.pathname === '/hero.jpg' ||
+      url.pathname === '/hero.webp' ||
       url.pathname.endsWith('.svg') ||
       url.pathname.endsWith('.webmanifest'))
   );

@@ -129,7 +129,7 @@ export const PRODUCTOS_SEED: Producto[] = [
     descripcion: 'Aceite para motores 2 tiempos con botella autodosificadora y estabilizador de combustible. Fórmula anti-humo, mezcla hasta 23 litros de bencina. Protege el pistón en uso intensivo.',
     categoria: 'aceites-lubricantes', subcategoria: 'Aceite de mezcla 2T',
     precio: 9990, precioOferta: 8490, stock: 48,
-    fotos: ['/productos/aceite-2t.jpg'],
+    fotos: ['/productos/aceite-2t.webp'],
     marcasCompatibles: ['Stihl', 'Husqvarna', 'Honda', 'Echo', 'Toyama', 'Genérica/China'],
     modelosCompatibles: [],
     preciosPorVolumen: [
@@ -162,7 +162,7 @@ export const PRODUCTOS_SEED: Producto[] = [
     descripcion: 'Cabezal semiautomático Tap & Go con adaptadores para la mayoría de desbrozadoras. Incluye nylon 2,4 mm precargado.',
     categoria: 'desbrozadoras', subcategoria: 'Accesorios de corte',
     precio: 12990, precioOferta: 10990, stock: 18,
-    fotos: ['/productos/cabezal-nylon.jpg'],
+    fotos: ['/productos/cabezal-nylon.webp'],
     marcasCompatibles: ['Stihl', 'Husqvarna', 'Honda', 'Toyama', 'Genérica/China'],
     modelosCompatibles: ['FS 55', 'FS 120', '143R-II', 'UMK435', 'RT43L'],
     preciosPorVolumen: [
@@ -194,7 +194,7 @@ export const PRODUCTOS_SEED: Producto[] = [
     descripcion: 'Motosierra doméstica 40,9 cc con espada Oregon de 14". Partida fácil con Smart Start, freno de cadena inercial y antivibración. Ideal para leña y mantención de campo.',
     categoria: 'motosierras', subcategoria: 'Domésticas',
     precio: 249990, stock: 4,
-    fotos: ['/productos/motosierra-husqvarna.jpg', '/productos/motosierra-uso.jpg'],
+    fotos: ['/productos/motosierra-husqvarna.webp', '/productos/motosierra-uso.webp'],
     marcasCompatibles: ['Husqvarna'],
     modelosCompatibles: ['135'],
     preciosPorVolumen: [
@@ -226,7 +226,7 @@ export const PRODUCTOS_SEED: Producto[] = [
     descripcion: 'Kit de afilado con lima redonda 5,5 mm, guía de profundidad y mango ergonómico. Para cadenas paso .325" y 3/8".',
     categoria: 'herramientas-seguridad', subcategoria: 'Afilado',
     precio: 10990, stock: 27,
-    fotos: ['/productos/afilado.jpg'],
+    fotos: ['/productos/afilado.webp'],
     marcasCompatibles: ['Stihl', 'Husqvarna', 'Echo', 'Toyama', 'Genérica/China'],
     modelosCompatibles: [],
     preciosPorVolumen: [
@@ -258,7 +258,7 @@ export const PRODUCTOS_SEED: Producto[] = [
     descripcion: 'Embrague centrífugo completo con zapatas y resortes para Husqvarna 445 y 450. Material de fricción de larga duración.',
     categoria: 'repuestos-varios', subcategoria: 'Embragues',
     precio: 21990, stock: 3,
-    fotos: ['/productos/embrague.jpg'],
+    fotos: ['/productos/embrague.webp'],
     marcasCompatibles: ['Husqvarna'],
     modelosCompatibles: ['445', '450'],
     preciosPorVolumen: [

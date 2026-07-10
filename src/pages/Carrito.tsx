@@ -4,9 +4,14 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useCarrito } from '../stores/useCarrito';
 import { useAuth } from '../stores/useAuth';
 import { formatoCLP } from '../utils/precio';
+import { useSeo } from '../utils/seo';
 import { IconoCarrito, IconoDocumento } from '../components/Iconos';
 
 export default function Carrito() {
+  useSeo({
+    titulo: 'Carrito de compras',
+    descripcion: 'Revisa tu carrito: precios por volumen aplicados automáticamente y costo de envío visible antes de pagar.',
+  });
   const navigate = useNavigate();
   const { usuario } = useAuth();
   const { items, cambiarCantidad, quitar, total } = useCarrito();
@@ -31,7 +36,7 @@ export default function Carrito() {
         <div className="flex-1 space-y-3">
           {items.map((it) => (
             <div key={it.productoId} className="tarjeta flex gap-3">
-              <img src={it.foto} alt="" className="h-20 w-20 shrink-0 rounded-lg object-cover" />
+              <img src={it.foto} alt="" loading="lazy" width={80} height={80} className="h-20 w-20 shrink-0 rounded-lg object-cover" />
               <div className="min-w-0 flex-1">
                 <Link to={`/producto/${it.productoId}`} className="line-clamp-2 text-sm font-semibold hover:text-verde">
                   {it.nombre}

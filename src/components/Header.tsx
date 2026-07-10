@@ -69,6 +69,19 @@ export default function Header() {
     return () => document.removeEventListener('mousedown', cerrar);
   }, [categoriasAbiertas]);
 
+  // Escape cierra el desplegable de categorías y el menú móvil
+  useEffect(() => {
+    if (!categoriasAbiertas && !menuAbierto) return;
+    const alEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setCategoriasAbiertas(false);
+        setMenuAbierto(false);
+      }
+    };
+    document.addEventListener('keydown', alEscape);
+    return () => document.removeEventListener('keydown', alEscape);
+  }, [categoriasAbiertas, menuAbierto]);
+
   return (
     <header className="sticky top-0 z-nav shadow-md">
       {/* 1 · Barra superior carbón */}

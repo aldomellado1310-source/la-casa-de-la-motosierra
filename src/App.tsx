@@ -16,6 +16,7 @@ import Producto from './pages/Producto';
 import Carrito from './pages/Carrito';
 import { useAuth } from './stores/useAuth';
 import { useCarrito } from './stores/useCarrito';
+import { useSeo } from './utils/seo';
 
 // Carga diferida de páginas menos frecuentes
 const Checkout = lazy(() => import('./pages/Checkout'));
@@ -41,6 +42,28 @@ function ScrollArriba() {
   return null;
 }
 
+/** Página 404 con metadatos propios */
+function NoEncontrada() {
+  useSeo({
+    titulo: 'Página no encontrada',
+    descripcion: 'La dirección que buscas no existe o fue movida. Encuentra repuestos para motosierras y desbrozadoras en nuestra tienda.',
+  });
+  return (
+    <div className="mx-auto max-w-xl px-4 py-16 text-center">
+      <p className="font-display text-6xl font-bold text-borde">404</p>
+      <h1 className="titulo-seccion mt-2">Esta página se fue al monte</h1>
+      <p className="mt-3 text-sm text-gris-600">
+        La dirección que buscas no existe o fue movida. Lo que sí tenemos es el
+        repuesto que andas buscando.
+      </p>
+      <div className="mt-6 flex justify-center gap-2">
+        <Link to="/tienda" className="btn-primario">Ir a la tienda</Link>
+        <Link to="/" className="btn-secundario">Volver al inicio</Link>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const inicializar = useAuth((s) => s.inicializar);
   const usuario = useAuth((s) => s.usuario);
@@ -64,7 +87,7 @@ export default function App() {
       <main className="flex-1">
         <Suspense
           fallback={
-            <div className="flex min-h-[40vh] items-center justify-center text-bosque">Cargando…</div>
+            <div className="flex min-h-[40vh] items-center justify-center text-verde">Cargando…</div>
           }
         >
           <Routes>
@@ -101,23 +124,7 @@ export default function App() {
                 </RutaProtegida>
               }
             />
-            <Route
-              path="*"
-              element={
-                <div className="mx-auto max-w-xl px-4 py-16 text-center">
-                  <p className="font-display text-6xl font-bold text-borde">404</p>
-                  <h1 className="titulo-seccion mt-2">Esta página se fue al monte</h1>
-                  <p className="mt-3 text-sm text-gris-600">
-                    La dirección que buscas no existe o fue movida. Lo que sí tenemos es el
-                    repuesto que andas buscando.
-                  </p>
-                  <div className="mt-6 flex justify-center gap-2">
-                    <Link to="/tienda" className="btn-primario">Ir a la tienda</Link>
-                    <Link to="/" className="btn-secundario">Volver al inicio</Link>
-                  </div>
-                </div>
-              }
-            />
+            <Route path="*" element={<NoEncontrada />} />
           </Routes>
         </Suspense>
       </main>

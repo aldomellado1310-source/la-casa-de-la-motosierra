@@ -71,8 +71,8 @@ Usuarios demo: `cliente@demo.cl` / `empresa@demo.cl` / `admin@demo.cl`, clave `d
 
 ## Pendientes conocidos
 
-- `public/hero.jpg` es provisional (foto CC de Puerto Aysén); el cliente generará la
-  definitiva. Reemplazar manteniendo el nombre.
+- `public/hero.webp` es provisional (foto CC de Puerto Aysén); el cliente generará la
+  definitiva. Reemplazar manteniendo el nombre y el formato WebP (~1600px de ancho).
 - Dominio placeholder `lacasadelamotosierra.cl` en `robots.txt` y `sitemap.xml`.
 - Datos legales de referencia en `/terminos` y `/privacidad` (RUT, plazos): validar con el
   cliente antes de producción.

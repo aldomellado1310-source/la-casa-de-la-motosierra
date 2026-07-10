@@ -3,19 +3,27 @@
 // En MODO DEMO los pedidos viven en memoria de la sesión.
 // ============================================================
 import {
-  collection, doc, getDoc, getDocs, orderBy, query, setDoc, updateDoc, where,
+  collection, doc, getDoc, getDocs, increment, orderBy, query, setDoc, updateDoc, where, writeBatch,
 } from 'firebase/firestore';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { MODO_DEMO, db, storage } from '../config/firebase';
+import { ajustarStock, invalidarCacheProductos, obtenerProducto } from './productos';
 import type { EstadoPedido, Pedido } from '../types';
 
 // Almacén en memoria para modo demo
 const pedidosDemo: Pedido[] = [];
 
-/** Genera un id de pedido legible: PED-20260706-XXXX */
+/**
+ * Genera un id de pedido legible: PED-20260706-XXXXXXXX.
+ * El id funciona como token del seguimiento público, así que el sufijo
+ * usa crypto.getRandomValues (8 caracteres, ~1 billón de combinaciones);
+ * un sufijo corto de Math.random sería enumerable por fuerza bruta.
+ */
 function generarIdPedido(): string {
   const fecha = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-  const azar = Math.random().toString(36).slice(2, 6).toUpperCase();
+  const alfabeto = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // sin 0/O ni 1/I: se dicta por teléfono
+  const bytes = crypto.getRandomValues(new Uint8Array(8));
+  const azar = Array.from(bytes, (b) => alfabeto[b % alfabeto.length]).join('');
   return `PED-${fecha}-${azar}`;
 }
 
@@ -74,6 +82,37 @@ export async function actualizarEstadoPedido(id: string, estado: EstadoPedido, r
   const datos: Record<string, unknown> = { estado };
   if (referenciaPago) datos.referenciaPago = referenciaPago;
   await updateDoc(doc(db!, 'pedidos', id), datos);
+}
+
+/**
+ * Descuenta el stock de los items de un pedido. Idempotente: el flag
+ * `stockDescontado` evita el doble descuento si se repite la llamada.
+ * En modo Firebase solo puede ejecutarlo el admin (reglas de `productos`);
+ * los pagos con pasarela lo hacen server-side en las Cloud Functions.
+ */
+export async function descontarStockPedido(id: string): Promise<void> {
+  if (MODO_DEMO) {
+    const p = pedidosDemo.find((x) => x.id === id);
+    if (!p || p.stockDescontado) return;
+    for (const item of p.items) {
+      const prod = await obtenerProducto(item.productoId);
+      if (prod) await ajustarStock(item.productoId, Math.max(0, prod.stock - item.cantidad));
+    }
+    p.stockDescontado = true;
+    return;
+  }
+  const refPedido = doc(db!, 'pedidos', id);
+  const snap = await getDoc(refPedido);
+  if (!snap.exists()) return;
+  const pedido = snap.data() as Pedido;
+  if (pedido.stockDescontado) return;
+  const lote = writeBatch(db!);
+  for (const item of pedido.items) {
+    lote.update(doc(db!, 'productos', item.productoId), { stock: increment(-item.cantidad) });
+  }
+  lote.update(refPedido, { stockDescontado: true });
+  await lote.commit();
+  invalidarCacheProductos();
 }
 
 /** Sube el comprobante de transferencia y lo asocia al pedido */

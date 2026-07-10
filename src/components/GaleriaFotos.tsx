@@ -56,7 +56,7 @@ export default function GaleriaFotos({ fotos, alt }: { fotos: string[]; alt: str
               }`}
               aria-label={`Foto ${i + 1}`}
             >
-              <img src={f} alt="" className="h-full w-full object-cover" />
+              <img src={f} alt="" loading="lazy" width={64} height={64} className="h-full w-full object-cover" />
             </button>
           ))}
         </div>

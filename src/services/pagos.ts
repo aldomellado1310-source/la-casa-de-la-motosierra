@@ -4,6 +4,7 @@
 // las Cloud Functions (functions/src/index.ts).
 // ============================================================
 import { FUNCTIONS_URL, MODO_DEMO } from '../config/firebase';
+import { actualizarEstadoPedido, descontarStockPedido } from './pedidos';
 
 /** Datos bancarios para pago por transferencia */
 export const DATOS_TRANSFERENCIA = {
@@ -24,8 +25,10 @@ interface RespuestaWebpay {
  * Inicia una transacción Webpay Plus.
  * La Cloud Function crea la transacción con el SDK de Transbank
  * y devuelve la URL + token para redirigir al formulario de pago.
+ * El monto lo lee la función desde el pedido en Firestore (el valor
+ * del navegador no es confiable).
  */
-export async function iniciarPagoWebpay(pedidoId: string, monto: number): Promise<RespuestaWebpay> {
+export async function iniciarPagoWebpay(pedidoId: string): Promise<RespuestaWebpay> {
   if (MODO_DEMO || !FUNCTIONS_URL) {
     // En demo simulamos la redirección al retorno exitoso
     return { url: `${window.location.origin}/pago/retorno`, token: `demo-${pedidoId}` };
@@ -35,7 +38,6 @@ export async function iniciarPagoWebpay(pedidoId: string, monto: number): Promis
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       pedidoId,
-      monto,
       returnUrl: `${window.location.origin}/pago/retorno`,
     }),
   });
@@ -69,10 +71,17 @@ export interface ResultadoCommitWebpay {
   monto?: number;
 }
 
-/** Confirma (commit) la transacción Webpay al volver del formulario */
+/**
+ * Confirma (commit) la transacción Webpay al volver del formulario.
+ * En modo Firebase la Cloud Function actualiza el pedido y descuenta
+ * el stock; en demo lo hacemos aquí sobre los datos en memoria.
+ */
 export async function confirmarPagoWebpay(tokenWs: string): Promise<ResultadoCommitWebpay> {
   if (tokenWs.startsWith('demo-')) {
-    return { aprobado: true, pedidoId: tokenWs.replace('demo-', ''), codigoAutorizacion: 'DEMO-OK' };
+    const pedidoId = tokenWs.replace('demo-', '');
+    await actualizarEstadoPedido(pedidoId, 'pagado', 'DEMO-OK');
+    await descontarStockPedido(pedidoId);
+    return { aprobado: true, pedidoId, codigoAutorizacion: 'DEMO-OK' };
   }
   const res = await fetch(`${FUNCTIONS_URL}/webpayConfirmar`, {
     method: 'POST',
@@ -85,9 +94,10 @@ export async function confirmarPagoWebpay(tokenWs: string): Promise<ResultadoCom
 
 /**
  * Crea una preferencia de Mercado Pago y devuelve la URL de checkout
- * (init_point) para redirigir al usuario.
+ * (init_point) para redirigir al usuario. El monto lo lee la función
+ * desde el pedido en Firestore.
  */
-export async function iniciarPagoMercadoPago(pedidoId: string, monto: number, descripcion: string): Promise<string> {
+export async function iniciarPagoMercadoPago(pedidoId: string, descripcion: string): Promise<string> {
   if (MODO_DEMO || !FUNCTIONS_URL) {
     return `${window.location.origin}/pago/retorno?mp=demo&pedido=${pedidoId}`;
   }
@@ -96,7 +106,6 @@ export async function iniciarPagoMercadoPago(pedidoId: string, monto: number, de
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       pedidoId,
-      monto,
       descripcion,
       backUrl: `${window.location.origin}/pago/retorno`,
     }),
@@ -104,4 +113,25 @@ export async function iniciarPagoMercadoPago(pedidoId: string, monto: number, de
   if (!res.ok) throw new Error('No se pudo iniciar el pago con Mercado Pago');
   const datos = (await res.json()) as { initPoint: string };
   return datos.initPoint;
+}
+
+/**
+ * Verifica un pago de Mercado Pago contra la API oficial (server-side).
+ * El status que llega en la URL de retorno NO se usa como fuente de
+ * verdad: cualquiera podría forjarla con status=approved.
+ */
+export async function confirmarPagoMercadoPago(pedidoId: string, paymentId: string): Promise<boolean> {
+  if (MODO_DEMO || !FUNCTIONS_URL) {
+    await actualizarEstadoPedido(pedidoId, 'pagado', 'MP-DEMO');
+    await descontarStockPedido(pedidoId);
+    return true;
+  }
+  const res = await fetch(`${FUNCTIONS_URL}/mercadoPagoConfirmar`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ pedidoId, paymentId }),
+  });
+  if (!res.ok) throw new Error('No se pudo verificar el pago con Mercado Pago');
+  const datos = (await res.json()) as { aprobado: boolean };
+  return datos.aprobado;
 }

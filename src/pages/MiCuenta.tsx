@@ -11,11 +11,16 @@ import { descargarPdfCotizacion } from '../services/pdfCotizacion';
 import { REGIONES_CHILE } from '../services/envios';
 import { obtenerMarcasCompatibles, obtenerModelosPorMarca } from '../services/productos';
 import { formatoCLP } from '../utils/precio';
+import { useSeo } from '../utils/seo';
 import type { Cotizacion, Pedido } from '../types';
 
 type Pestania = 'datos' | 'maquinas' | 'pedidos' | 'cotizaciones' | 'direcciones';
 
 export default function MiCuenta() {
+  useSeo({
+    titulo: 'Mi cuenta',
+    descripcion: 'Tus datos, máquinas registradas, pedidos, cotizaciones y direcciones guardadas.',
+  });
   const navigate = useNavigate();
   const { usuario, salir, actualizarPerfil, agregarDireccion, eliminarDireccion, agregarMaquina, eliminarMaquina } = useAuth();
   const [pestania, setPestania] = useState<Pestania>('datos');
@@ -129,16 +134,16 @@ export default function MiCuenta() {
       {pestania === 'datos' && (
         <form onSubmit={guardarDatos} className="tarjeta max-w-md space-y-3">
           <div>
-            <label className="etiqueta">Nombre</label>
-            <input value={nombre} onChange={(e) => setNombre(e.target.value)} className="campo" />
+            <label className="etiqueta" htmlFor="mc-nombre">Nombre</label>
+            <input id="mc-nombre" value={nombre} onChange={(e) => setNombre(e.target.value)} className="campo" />
           </div>
           <div>
-            <label className="etiqueta">Correo</label>
-            <input value={usuario.email} disabled className="campo opacity-60" />
+            <label className="etiqueta" htmlFor="mc-correo">Correo</label>
+            <input id="mc-correo" value={usuario.email} disabled className="campo opacity-60" />
           </div>
           <div>
-            <label className="etiqueta">Teléfono</label>
-            <input value={telefono} onChange={(e) => setTelefono(e.target.value)} placeholder="+56 9 …" className="campo" />
+            <label className="etiqueta" htmlFor="mc-telefono">Teléfono</label>
+            <input id="mc-telefono" value={telefono} onChange={(e) => setTelefono(e.target.value)} placeholder="+56 9 …" className="campo" />
           </div>
           <button type="submit" className="btn-primario">{guardado ? '✓ Guardado' : 'Guardar cambios'}</button>
         </form>
@@ -296,26 +301,26 @@ export default function MiCuenta() {
           <form onSubmit={crearDireccion} className="tarjeta space-y-3 self-start">
             <h3 className="font-bold">Agregar dirección</h3>
             <div>
-              <label className="etiqueta">Alias</label>
-              <input required value={nuevaDir.alias} onChange={(e) => setNuevaDir({ ...nuevaDir, alias: e.target.value })} placeholder="Casa, Taller…" className="campo" />
+              <label className="etiqueta" htmlFor="dir-alias">Alias</label>
+              <input id="dir-alias" required value={nuevaDir.alias} onChange={(e) => setNuevaDir({ ...nuevaDir, alias: e.target.value })} placeholder="Casa, Taller…" className="campo" />
             </div>
             <div className="grid grid-cols-3 gap-2">
               <div className="col-span-2">
-                <label className="etiqueta">Calle</label>
-                <input required value={nuevaDir.calle} onChange={(e) => setNuevaDir({ ...nuevaDir, calle: e.target.value })} className="campo" />
+                <label className="etiqueta" htmlFor="dir-calle">Calle</label>
+                <input id="dir-calle" required value={nuevaDir.calle} onChange={(e) => setNuevaDir({ ...nuevaDir, calle: e.target.value })} className="campo" />
               </div>
               <div>
-                <label className="etiqueta">Número</label>
-                <input required value={nuevaDir.numero} onChange={(e) => setNuevaDir({ ...nuevaDir, numero: e.target.value })} className="campo" />
+                <label className="etiqueta" htmlFor="dir-numero">Número</label>
+                <input id="dir-numero" required value={nuevaDir.numero} onChange={(e) => setNuevaDir({ ...nuevaDir, numero: e.target.value })} className="campo" />
               </div>
             </div>
             <div>
-              <label className="etiqueta">Comuna</label>
-              <input required value={nuevaDir.comuna} onChange={(e) => setNuevaDir({ ...nuevaDir, comuna: e.target.value })} className="campo" />
+              <label className="etiqueta" htmlFor="dir-comuna">Comuna</label>
+              <input id="dir-comuna" required value={nuevaDir.comuna} onChange={(e) => setNuevaDir({ ...nuevaDir, comuna: e.target.value })} className="campo" />
             </div>
             <div>
-              <label className="etiqueta">Región</label>
-              <select value={nuevaDir.region} onChange={(e) => setNuevaDir({ ...nuevaDir, region: e.target.value })} className="campo">
+              <label className="etiqueta" htmlFor="dir-region">Región</label>
+              <select id="dir-region" value={nuevaDir.region} onChange={(e) => setNuevaDir({ ...nuevaDir, region: e.target.value })} className="campo">
                 {REGIONES_CHILE.map((r) => <option key={r} value={r}>{r}</option>)}
               </select>
             </div>

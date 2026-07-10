@@ -3,11 +3,12 @@
 // pedido (PED-AAAAMMDD-XXXX) y ve el estado sin iniciar sesión.
 // Pensado para reducir los "¿y mi pedido?" por WhatsApp.
 // ============================================================
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { ETIQUETAS_ESTADO_PEDIDO, obtenerPedidoPorId } from '../services/pedidos';
 import { WHATSAPP_NUMERO } from '../config/firebase';
 import { formatoCLP } from '../utils/precio';
+import { useSeo } from '../utils/seo';
 import { IconoCamion, IconoWhatsApp } from '../components/Iconos';
 import type { EstadoPedido, Pedido } from '../types';
 
@@ -21,6 +22,10 @@ function hitosPara(pedido: Pedido): EstadoPedido[] {
 }
 
 export default function Seguimiento() {
+  useSeo({
+    titulo: 'Seguimiento de pedido',
+    descripcion: 'Consulta el estado de tu pedido con el número que recibiste al comprar, sin iniciar sesión.',
+  });
   const [params] = useSearchParams();
   const [numero, setNumero] = useState(params.get('pedido') ?? '');
   const [pedido, setPedido] = useState<Pedido | null>(null);
@@ -38,6 +43,20 @@ export default function Seguimiento() {
       setCargando(false);
     }
   };
+
+  // Si llega con ?pedido= (p. ej. desde el retorno de pago), buscar de inmediato
+  useEffect(() => {
+    const inicial = params.get('pedido');
+    if (!inicial?.trim()) return;
+    setCargando(true);
+    obtenerPedidoPorId(inicial)
+      .then((p) => {
+        setPedido(p);
+        setBuscado(true);
+      })
+      .finally(() => setCargando(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const hitos = pedido ? hitosPara(pedido) : [];
   const indiceActual = pedido ? hitos.indexOf(pedido.estado) : -1;

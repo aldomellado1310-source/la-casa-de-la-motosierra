@@ -10,15 +10,30 @@
     <meta property="og:site_name" content="La Casa de la Motosierra" />
     <meta property="og:title" content="La Casa de la Motosierra — Repuestos Forestales · Puerto Aysén" />
     <meta property="og:description" content="Repuestos para motosierras y desbrozadoras con buscador por marca y modelo, stock real y despacho a todo Chile. Economía para la Gente de Aysén." />
-    <meta property="og:image" content="/hero.jpg" />
+    <meta property="og:image" content="https://lacasadelamotosierra.cl/hero.webp" />
+    <meta property="og:url" content="https://lacasadelamotosierra.cl/" />
     <meta property="og:locale" content="es_CL" />
     <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content="https://lacasadelamotosierra.cl/hero.webp" />
+    <link rel="canonical" href="https://lacasadelamotosierra.cl/" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="manifest" href="/manifest.webmanifest" />
-    <!-- Inter (UI) + Barlow Condensed (display, eco del logo) con carga optimizada -->
+    <!-- Hero (LCP del home): precarga con prioridad alta -->
+    <link rel="preload" as="image" href="/hero.webp" fetchpriority="high" />
+    <!-- Inter (UI) + Barlow Condensed (display, eco del logo).
+         Carga no bloqueante: el stylesheet se aplica al terminar de cargar
+         (media=print + onload); display=swap evita texto invisible. -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700&display=swap"
+      rel="stylesheet"
+      media="print"
+      onload="this.media='all'"
+    />
+    <noscript>
+      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet" />
+    </noscript>
     <title>La Casa de la Motosierra — Repuestos Forestales · Puerto Aysén</title>
   </head>
   <body>

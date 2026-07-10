@@ -10,15 +10,21 @@ import { useCarrito } from '../stores/useCarrito';
 import { crearCotizacion } from '../services/cotizaciones';
 import { descargarPdfCotizacion } from '../services/pdfCotizacion';
 import { desglosarIVA, formatoCLP } from '../utils/precio';
+import { useSeo } from '../utils/seo';
 import { IconoDocumento } from '../components/Iconos';
 import type { Cotizacion } from '../types';
 
 export default function CotizacionNueva() {
+  useSeo({
+    titulo: 'Solicitar cotización formal',
+    descripcion: 'Genera una cotización formal en PDF con folio, RUT, detalle de ítems, neto, IVA y total — lista para respaldar tu orden de compra.',
+  });
   const navigate = useNavigate();
   const { usuario } = useAuth();
   const { items, total, vaciar } = useCarrito();
   const [observaciones, setObservaciones] = useState('');
   const [procesando, setProcesando] = useState(false);
+  const [error, setError] = useState('');
   const [creada, setCreada] = useState<Cotizacion | null>(null);
 
   // Sin sesión: explicar el flujo e invitar a registrarse
@@ -45,7 +51,7 @@ export default function CotizacionNueva() {
     return (
       <div className="mx-auto max-w-xl px-4 py-12 text-center">
         <div className="tarjeta py-10">
-          <span className="text-5xl">📄</span>
+          <IconoDocumento className="mx-auto h-12 w-12 text-verde" />
           <h1 className="mt-4 titulo-seccion">Cotización {creada.folio} creada</h1>
           <p className="mt-2 text-sm text-grafito/80">
             Válida hasta el {new Date(creada.validaHasta).toLocaleDateString('es-CL')}. También la encontrarás en
@@ -76,10 +82,13 @@ export default function CotizacionNueva() {
 
   const solicitar = async () => {
     setProcesando(true);
+    setError('');
     try {
       const cot = await crearCotizacion(usuario, items, observaciones.trim() || undefined);
       vaciar();
       setCreada(cot);
+    } catch {
+      setError('No se pudo generar la cotización. Revisa tu conexión e inténtalo de nuevo.');
     } finally {
       setProcesando(false);
     }
@@ -114,7 +123,8 @@ export default function CotizacionNueva() {
 
       <div className="tarjeta mt-4">
         <h2 className="mb-3 font-bold">Detalle de la cotización</h2>
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[420px] text-sm">
           <thead>
             <tr className="border-b border-borde text-left text-xs uppercase text-gris-600">
               <th className="py-2">Producto</th>
@@ -137,18 +147,20 @@ export default function CotizacionNueva() {
             ))}
           </tbody>
         </table>
+        </div>
         <div className="mt-3 ml-auto max-w-xs space-y-1 text-sm">
           <div className="flex justify-between"><span>Neto</span><span>{formatoCLP(neto)}</span></div>
           <div className="flex justify-between"><span>IVA (19%)</span><span>{formatoCLP(iva)}</span></div>
           <div className="flex justify-between border-t border-borde pt-1 text-base font-extrabold">
-            <span>Total</span><span className="text-naranja">{formatoCLP(total())}</span>
+            <span>Total</span><span className="text-naranja-oscuro">{formatoCLP(total())}</span>
           </div>
         </div>
       </div>
 
       <div className="tarjeta mt-4">
-        <label className="etiqueta">Observaciones (opcional)</label>
+        <label className="etiqueta" htmlFor="cot-observaciones">Observaciones (opcional)</label>
         <textarea
+          id="cot-observaciones"
           value={observaciones}
           onChange={(e) => setObservaciones(e.target.value)}
           rows={3}
@@ -157,6 +169,7 @@ export default function CotizacionNueva() {
         />
       </div>
 
+      {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
       <button onClick={solicitar} disabled={procesando} className="btn-primario mt-6 w-full py-3">
         {procesando ? 'Generando…' : 'Generar cotización con folio y PDF'}
       </button>

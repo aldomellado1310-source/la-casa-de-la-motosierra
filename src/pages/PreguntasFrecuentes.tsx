@@ -1,5 +1,6 @@
 ﻿// Preguntas frecuentes: envíos, pagos, devoluciones y garantía
 import { useState } from 'react';
+import { useSeo } from '../utils/seo';
 
 interface Pregunta {
   seccion: string;
@@ -61,6 +62,10 @@ const PREGUNTAS: Pregunta[] = [
 ];
 
 export default function PreguntasFrecuentes() {
+  useSeo({
+    titulo: 'Preguntas frecuentes',
+    descripcion: 'Envíos a todo Chile, medios de pago, devoluciones y garantía de repuestos y maquinaria forestal.',
+  });
   const [abierta, setAbierta] = useState<number | null>(0);
   const secciones = [...new Set(PREGUNTAS.map((p) => p.seccion))];
 
@@ -69,20 +74,22 @@ export default function PreguntasFrecuentes() {
       <h1 className="mb-8 text-center titulo-seccion sm:text-4xl">Preguntas frecuentes</h1>
       {secciones.map((seccion) => (
         <section key={seccion} className="mb-6">
-          <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-naranja">{seccion}</h2>
+          <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-naranja-oscuro">{seccion}</h2>
           <div className="space-y-2">
             {PREGUNTAS.map((p, i) =>
               p.seccion === seccion ? (
                 <div key={p.q} className="overflow-hidden rounded-xl border border-borde bg-white">
                   <button
                     onClick={() => setAbierta(abierta === i ? null : i)}
+                    aria-expanded={abierta === i}
+                    aria-controls={`faq-respuesta-${i}`}
                     className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm font-semibold hover:bg-gris-fondo"
                   >
                     {p.q}
-                    <span className="shrink-0 text-verde">{abierta === i ? '−' : '+'}</span>
+                    <span aria-hidden="true" className="shrink-0 text-verde">{abierta === i ? '−' : '+'}</span>
                   </button>
                   {abierta === i && (
-                    <p className="animar-entrada border-t border-borde px-4 py-3 text-sm leading-relaxed text-grafito/85">
+                    <p id={`faq-respuesta-${i}`} className="animar-entrada border-t border-borde px-4 py-3 text-sm leading-relaxed text-grafito/85">
                       {p.a}
                     </p>
                   )}

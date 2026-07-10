@@ -1,6 +1,6 @@
 ﻿// Admin > Pedidos: listado con detalle y cambio de estado
 import { useEffect, useState } from 'react';
-import { ETIQUETAS_ESTADO_PEDIDO, actualizarEstadoPedido, obtenerTodosLosPedidos } from '../../services/pedidos';
+import { ETIQUETAS_ESTADO_PEDIDO, actualizarEstadoPedido, descontarStockPedido, obtenerTodosLosPedidos } from '../../services/pedidos';
 import { formatoCLP } from '../../utils/precio';
 import type { EstadoPedido, Pedido } from '../../types';
 
@@ -18,6 +18,9 @@ export default function AdminPedidos() {
 
   const cambiarEstado = async (id: string, estado: EstadoPedido) => {
     await actualizarEstadoPedido(id, estado);
+    // Al validar un pago (p. ej. transferencia) se descuenta el stock;
+    // el flag stockDescontado evita duplicar si la pasarela ya lo hizo
+    if (estado === 'pagado') await descontarStockPedido(id);
     await recargar();
   };
 
@@ -79,8 +82,9 @@ export default function AdminPedidos() {
                 </div>
               </div>
               <div className="mt-4 flex items-center gap-2">
-                <label className="text-sm font-semibold">Cambiar estado:</label>
+                <label className="text-sm font-semibold" htmlFor={`estado-${p.id}`}>Cambiar estado:</label>
                 <select
+                  id={`estado-${p.id}`}
                   value={p.estado}
                   onChange={(e) => void cambiarEstado(p.id, e.target.value as EstadoPedido)}
                   className="campo max-w-xs"

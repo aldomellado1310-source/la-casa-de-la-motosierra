@@ -135,6 +135,8 @@ export interface Pedido {
   comprobanteUrl?: string;
   /** Token/orden de la pasarela */
   referenciaPago?: string;
+  /** true cuando el stock de los items ya fue descontado (evita doble descuento) */
+  stockDescontado?: boolean;
 }
 
 export type EstadoCotizacion = 'enviada' | 'aprobada' | 'convertida' | 'vencida';

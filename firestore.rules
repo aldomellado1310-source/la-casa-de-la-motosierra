@@ -35,20 +35,32 @@ service cloud.firestore {
       allow read, write: if request.auth != null && request.auth.uid == uid;
     }
 
-    // Pedidos: crea cualquiera (incluye invitados vía frontend).
+    // Pedidos: crea cualquiera (incluye invitados vía frontend), pero con
+    // forma mínima y SIEMPRE en estado inicial 'pendiente_pago' — un pedido
+    // no puede nacer "pagado": ese estado lo fijan las Cloud Functions
+    // (Admin SDK) tras verificar el pago, o el admin.
     // `get` por id es público para el seguimiento de pedido sin sesión:
-    // el número de pedido (fecha + sufijo aleatorio) actúa como token de
-    // consulta. `list` (enumerar pedidos) queda solo para el admin.
+    // el número de pedido (sufijo criptográfico de 8 caracteres) actúa
+    // como token de consulta. `list` (enumerar) queda solo para el admin.
     match /pedidos/{id} {
-      allow create: if true;
+      allow create: if request.resource.data.estado == 'pendiente_pago'
+        && request.resource.data.total is number
+        && request.resource.data.total > 0
+        && request.resource.data.items is list
+        && request.resource.data.items.size() > 0
+        && request.resource.data.emailCliente is string;
       allow get: if true;
       // Cada usuario puede listar solo sus pedidos (query con uid == auth.uid)
       allow list: if esAdmin() || (request.auth != null && resource.data.uid == request.auth.uid);
+      // Adjuntar comprobante de transferencia: cualquiera con el número-token
+      // (cubre pedidos de invitado, sin sesión). Solo permite la transición
+      // pendiente_pago → pendiente_validacion; jamás auto-marcarse 'pagado'.
       allow update: if esAdmin()
-        // El dueño solo puede adjuntar su comprobante de transferencia
-        || (request.auth != null && resource.data.uid == request.auth.uid
-            && request.resource.data.diff(resource.data).affectedKeys()
-               .hasOnly(['comprobanteUrl', 'estado']));
+        || (request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(['comprobanteUrl', 'estado'])
+            && resource.data.estado == 'pendiente_pago'
+            && request.resource.data.estado == 'pendiente_validacion'
+            && request.resource.data.comprobanteUrl is string);
       allow delete: if esAdmin();
     }
 
@@ -64,6 +76,12 @@ service cloud.firestore {
     match /avisosStock/{id} {
       allow create: if true;
       allow read, update, delete: if esAdmin();
+    }
+
+    // Contadores correlativos (folio de cotización por año).
+    // Solo usuarios autenticados: las cotizaciones exigen sesión.
+    match /contadores/{id} {
+      allow read, write: if request.auth != null;
     }
   }
 }

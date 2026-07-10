@@ -82,9 +82,9 @@ export default function TarjetaProducto({ producto }: { producto: Producto }) {
             {oferta && <s className="text-sm text-gris-600">{formatoCLP(producto.precio)}</s>}
           </p>
 
-          {/* Stepper + Agregar */}
+          {/* Stepper + Agregar (con wrap: en 320px el botón baja a su propia línea) */}
           {!agotado ? (
-            <div className="mt-2 flex items-stretch gap-2">
+            <div className="mt-2 flex flex-wrap items-stretch gap-2">
               <div className="flex items-center overflow-hidden rounded-lg border border-borde">
                 <button
                   onClick={() => setCantidad(Math.max(1, cantidad - 1))}
@@ -100,7 +100,7 @@ export default function TarjetaProducto({ producto }: { producto: Producto }) {
               </div>
               <button
                 onClick={alAgregar}
-                className={`${agregado ? 'btn-verde' : 'btn-primario'} flex-1 px-2 text-sm`}
+                className={`${agregado ? 'btn-verde' : 'btn-primario'} min-w-[5.5rem] flex-1 px-2 text-sm`}
                 aria-live="polite"
               >
                 {agregado ? '✓ Agregado' : 'Agregar'}

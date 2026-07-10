@@ -1,22 +1,28 @@
-﻿// Inicio de sesión: email/contraseña + Google
+﻿// Inicio de sesión: email/contraseña + Google + recuperación de clave
 import { useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { MODO_DEMO } from '../config/firebase';
 import { useAuth } from '../stores/useAuth';
 import { useCarrito } from '../stores/useCarrito';
+import { useSeo } from '../utils/seo';
 
 export default function Ingresar() {
+  useSeo({
+    titulo: 'Iniciar sesión',
+    descripcion: 'Ingresa a tu cuenta para usar tus direcciones guardadas, tus máquinas registradas y tu historial de pedidos.',
+  });
   const navigate = useNavigate();
   const location = useLocation();
-  const { ingresar, ingresarConGoogle, usuario } = useAuth();
+  const { ingresar, ingresarConGoogle, recuperarPassword, usuario } = useAuth();
   const sincronizar = useCarrito((s) => s.sincronizarConUsuario);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [avisoReset, setAvisoReset] = useState('');
   const [cargando, setCargando] = useState(false);
 
   const destino = (location.state as { desde?: string } | null)?.desde ?? '/mi-cuenta';
-  if (usuario) navigate(destino, { replace: true });
+  if (usuario) return <Navigate to={destino} replace />;
 
   const entrar = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,6 +50,21 @@ export default function Ingresar() {
     }
   };
 
+  const olvidoPassword = async () => {
+    setError('');
+    setAvisoReset('');
+    if (!email) {
+      setError('Escribe tu correo arriba y vuelve a tocar “¿Olvidaste tu contraseña?”.');
+      return;
+    }
+    try {
+      await recuperarPassword(email);
+      setAvisoReset(`Te enviamos un enlace de recuperación a ${email}. Revisa tu bandeja de entrada (y el spam).`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo enviar el correo de recuperación.');
+    }
+  };
+
   return (
     <div className="mx-auto max-w-md px-4 py-10">
       <div className="tarjeta">
@@ -56,14 +77,18 @@ export default function Ingresar() {
         )}
         <form onSubmit={entrar} className="mt-4 space-y-3">
           <div>
-            <label className="etiqueta">Correo</label>
-            <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="campo" />
+            <label className="etiqueta" htmlFor="login-correo">Correo</label>
+            <input id="login-correo" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="campo" />
           </div>
           <div>
-            <label className="etiqueta">Contraseña</label>
-            <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} className="campo" />
+            <label className="etiqueta" htmlFor="login-clave">Contraseña</label>
+            <input id="login-clave" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} className="campo" />
+            <button type="button" onClick={olvidoPassword} className="mt-1.5 text-xs font-semibold text-verde hover:underline">
+              ¿Olvidaste tu contraseña?
+            </button>
           </div>
           {error && <p className="text-sm text-red-600">{error}</p>}
+          {avisoReset && <p className="rounded-lg bg-verde-badge p-3 text-sm text-verde-oscuro">{avisoReset}</p>}
           <button type="submit" disabled={cargando} className="btn-primario w-full py-3">
             {cargando ? 'Ingresando…' : 'Ingresar'}
           </button>

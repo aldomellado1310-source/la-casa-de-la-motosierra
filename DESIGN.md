@@ -1,4 +1,4 @@
-# Design
+﻿# Design
 
 Sistema visual derivado del logo real de La Casa de la Motosierra (tipografía negra condensada,
 barra naranja, motosierra naranja) y del mockup de referencia aprobado por el cliente
@@ -67,4 +67,4 @@ badge). Sin coreografías de carga. `prefers-reduced-motion` desactiva todo.
 
 Fotografía real de producto sobre fondo blanco (placeholders neutros mientras el cliente sube
 las suyas). Hero con fotografía de contexto (bosque patagónico/motosierra) con velo carbón para
-legibilidad del texto blanco; el archivo vive en `public/hero.jpg` y es reemplazable.
+legibilidad del texto blanco; el archivo vive en `public/hero.webp` y es reemplazable.

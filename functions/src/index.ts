@@ -24,7 +24,7 @@ import PDFDocument from 'pdfkit';
 import {
   Options, IntegrationApiKeys, IntegrationCommerceCodes, Environment, WebpayPlus,
 } from 'transbank-sdk';
-import { MercadoPagoConfig, Preference } from 'mercadopago';
+import { MercadoPagoConfig, Payment, Preference } from 'mercadopago';
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -54,6 +54,37 @@ function conCors(res: { set: (k: string, v: string) => void }): void {
   res.set('Access-Control-Allow-Headers', 'Content-Type');
 }
 
+/**
+ * Lee el total autoritativo de un pedido desde Firestore.
+ * El monto que envía el navegador NUNCA se usa para cobrar:
+ * un cliente malicioso podría manipularlo (price tampering).
+ */
+async function totalDePedido(pedidoId: string): Promise<number | null> {
+  const snap = await db.collection('pedidos').doc(pedidoId).get();
+  if (!snap.exists) return null;
+  const total = (snap.data() as { total?: unknown }).total;
+  return typeof total === 'number' && total > 0 ? Math.round(total) : null;
+}
+
+/** Descuenta el stock de los items de un pedido. Idempotente (flag stockDescontado). */
+async function descontarStockPedido(pedidoRef: FirebaseFirestore.DocumentReference): Promise<void> {
+  const snap = await pedidoRef.get();
+  if (!snap.exists) return;
+  const pedido = snap.data() as {
+    items: { productoId: string; cantidad: number }[];
+    stockDescontado?: boolean;
+  };
+  if (pedido.stockDescontado) return;
+  const lote = db.batch();
+  for (const item of pedido.items) {
+    lote.update(db.collection('productos').doc(item.productoId), {
+      stock: admin.firestore.FieldValue.increment(-item.cantidad),
+    });
+  }
+  lote.update(pedidoRef, { stockDescontado: true });
+  await lote.commit();
+}
+
 // ------------------------------------------------------------
 // Webpay Plus: crear transacción
 // ------------------------------------------------------------
@@ -63,15 +94,20 @@ export const webpayCrear = onRequest(
     conCors(res);
     if (req.method === 'OPTIONS') { res.status(204).send(''); return; }
     try {
-      const { pedidoId, monto, returnUrl } = req.body as { pedidoId: string; monto: number; returnUrl: string };
-      if (!pedidoId || !monto || !returnUrl) {
-        res.status(400).json({ error: 'Faltan parámetros: pedidoId, monto, returnUrl' });
+      const { pedidoId, returnUrl } = req.body as { pedidoId: string; returnUrl: string };
+      if (!pedidoId || !returnUrl) {
+        res.status(400).json({ error: 'Faltan parámetros: pedidoId, returnUrl' });
+        return;
+      }
+      const monto = await totalDePedido(pedidoId);
+      if (monto === null) {
+        res.status(404).json({ error: 'Pedido no encontrado o sin total válido' });
         return;
       }
       // buyOrder máx. 26 caracteres; sessionId identifica la sesión
       const buyOrder = pedidoId.slice(0, 26);
       const tx = transaccionWebpay();
-      const respuesta = await tx.create(buyOrder, `sesion-${Date.now()}`, Math.round(monto), returnUrl);
+      const respuesta = await tx.create(buyOrder, `sesion-${Date.now()}`, monto, returnUrl);
 
       // Asociamos el token al pedido para el commit posterior
       await db.collection('pedidos').doc(pedidoId).update({ referenciaPago: respuesta.token });
@@ -99,28 +135,21 @@ export const webpayConfirmar = onRequest(
       }
       const tx = transaccionWebpay();
       const resultado = await tx.commit(token);
-      const aprobado = resultado.response_code === 0 && resultado.status === 'AUTHORIZED';
+      let aprobado = resultado.response_code === 0 && resultado.status === 'AUTHORIZED';
 
       // Buscamos el pedido asociado al token y actualizamos su estado
       const snap = await db.collection('pedidos').where('referenciaPago', '==', token).limit(1).get();
       let pedidoId = resultado.buy_order as string;
       if (!snap.empty) {
         pedidoId = snap.docs[0].id;
+        // El monto autorizado debe coincidir con el total del pedido
+        const totalPedido = (snap.docs[0].data() as { total: number }).total;
+        aprobado = aprobado && Math.round(resultado.amount) === Math.round(totalPedido);
         await snap.docs[0].ref.update({
           estado: aprobado ? 'pagado' : 'pendiente_pago',
           referenciaPago: aprobado ? String(resultado.authorization_code) : token,
         });
-        // Descontar stock al aprobar el pago
-        if (aprobado) {
-          const pedido = snap.docs[0].data() as { items: { productoId: string; cantidad: number }[] };
-          const lote = db.batch();
-          for (const item of pedido.items) {
-            lote.update(db.collection('productos').doc(item.productoId), {
-              stock: admin.firestore.FieldValue.increment(-item.cantidad),
-            });
-          }
-          await lote.commit();
-        }
+        if (aprobado) await descontarStockPedido(snap.docs[0].ref);
       }
       res.json({
         aprobado,
@@ -149,9 +178,14 @@ export const mercadoPagoCrear = onRequest(
         res.status(500).json({ error: 'MP_ACCESS_TOKEN no configurado. Ejecuta: firebase functions:secrets:set MP_ACCESS_TOKEN' });
         return;
       }
-      const { pedidoId, monto, descripcion, backUrl } = req.body as {
-        pedidoId: string; monto: number; descripcion: string; backUrl: string;
+      const { pedidoId, descripcion, backUrl } = req.body as {
+        pedidoId: string; descripcion: string; backUrl: string;
       };
+      const monto = await totalDePedido(pedidoId);
+      if (monto === null) {
+        res.status(404).json({ error: 'Pedido no encontrado o sin total válido' });
+        return;
+      }
       const cliente = new MercadoPagoConfig({ accessToken });
       const preferencia = await new Preference(cliente).create({
         body: {
@@ -159,7 +193,7 @@ export const mercadoPagoCrear = onRequest(
             id: pedidoId,
             title: descripcion,
             quantity: 1,
-            unit_price: Math.round(monto),
+            unit_price: monto,
             currency_id: 'CLP',
           }],
           external_reference: pedidoId,
@@ -175,6 +209,53 @@ export const mercadoPagoCrear = onRequest(
     } catch (e) {
       console.error('mercadoPagoCrear:', e);
       res.status(500).json({ error: 'No se pudo crear la preferencia de Mercado Pago' });
+    }
+  },
+);
+
+// ------------------------------------------------------------
+// Mercado Pago: confirmar pago verificándolo con la API de MP
+// (el retorno del navegador NO es confiable: cualquiera puede
+// forjar la URL con status=approved)
+// ------------------------------------------------------------
+export const mercadoPagoConfirmar = onRequest(
+  { secrets: [MP_ACCESS_TOKEN], region: 'southamerica-west1' },
+  async (req, res) => {
+    conCors(res);
+    if (req.method === 'OPTIONS') { res.status(204).send(''); return; }
+    try {
+      const accessToken = process.env.MP_ACCESS_TOKEN;
+      if (!accessToken) {
+        res.status(500).json({ error: 'MP_ACCESS_TOKEN no configurado. Ejecuta: firebase functions:secrets:set MP_ACCESS_TOKEN' });
+        return;
+      }
+      const { pedidoId, paymentId } = req.body as { pedidoId: string; paymentId: string };
+      if (!pedidoId || !paymentId) {
+        res.status(400).json({ error: 'Faltan parámetros: pedidoId, paymentId' });
+        return;
+      }
+      const pedidoRef = db.collection('pedidos').doc(pedidoId);
+      const pedidoSnap = await pedidoRef.get();
+      if (!pedidoSnap.exists) {
+        res.status(404).json({ error: 'Pedido no encontrado' });
+        return;
+      }
+      const totalPedido = (pedidoSnap.data() as { total: number }).total;
+
+      const cliente = new MercadoPagoConfig({ accessToken });
+      const pago = await new Payment(cliente).get({ id: paymentId });
+      const aprobado = pago.status === 'approved'
+        && pago.external_reference === pedidoId
+        && Math.round(pago.transaction_amount ?? 0) === Math.round(totalPedido);
+
+      if (aprobado) {
+        await pedidoRef.update({ estado: 'pagado', referenciaPago: String(paymentId) });
+        await descontarStockPedido(pedidoRef);
+      }
+      res.json({ aprobado, pedidoId });
+    } catch (e) {
+      console.error('mercadoPagoConfirmar:', e);
+      res.status(500).json({ error: 'No se pudo verificar el pago con Mercado Pago' });
     }
   },
 );

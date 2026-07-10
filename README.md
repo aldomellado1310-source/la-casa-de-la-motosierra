@@ -1,4 +1,4 @@
-# La Casa de la Motosierra — E-commerce
+﻿# La Casa de la Motosierra — E-commerce
 
 Tienda online de repuestos y maquinaria forestal/agrícola de **La Casa de la Motosierra**
 (Puerto Aysén, Patagonia, Chile). *"Economía para la Gente de Aysén"*.
@@ -110,7 +110,7 @@ Tarifas de courier: `src/services/envios.ts`.
 
 ## Imágenes
 
-- `public/hero.jpg` y `public/productos/*` usan fotografía con licencia libre de Wikimedia
+- `public/hero.webp` y `public/productos/*` usan fotografía con licencia libre de Wikimedia
   Commons (detalle y atribuciones en `CREDITOS-IMAGENES.md`, citadas en el footer).
 - Reemplazar por fotografía propia o del **catálogo oficial del proveedor** manteniendo las
   rutas. **No usar imágenes descargadas de sitios de competidores.**
@@ -140,7 +140,7 @@ src/
   data/seed.ts   Catálogo demo (18 productos)
   utils/         precio (CLP, tramos, ofertas), rut, seo
 functions/       Cloud Functions: Webpay, Mercado Pago, PDF servidor
-public/          hero.jpg, productos/, sw.js, manifest, sitemap, robots
+public/          hero.webp, productos/, sw.js, manifest, sitemap, robots
 PRODUCT.md       Estrategia de producto y principios de diseño
 DESIGN.md        Sistema visual (paleta OKLCH, tipografía, componentes)
 ```

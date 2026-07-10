@@ -6,6 +6,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import BuscadorCompatibilidad from '../components/BuscadorCompatibilidad';
+import EstadoError from '../components/EstadoError';
 import TarjetaProducto from '../components/TarjetaProducto';
 import { obtenerCategorias, obtenerProductos } from '../services/productos';
 import { enOferta, estadoStock } from '../utils/precio';
@@ -24,6 +25,7 @@ export default function Tienda() {
   const [productos, setProductos] = useState<Producto[]>([]);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [cargando, setCargando] = useState(true);
+  const [error, setError] = useState(false);
   const [filtrosAbiertos, setFiltrosAbiertos] = useState(false);
 
   // Parámetros de la URL = estado de los filtros (compartible)
@@ -35,14 +37,18 @@ export default function Tienda() {
   const soloOfertas = params.get('ofertas') === '1';
   const pagina = Math.max(1, parseInt(params.get('pagina') ?? '1', 10));
 
-  useEffect(() => {
+  const cargar = () => {
     setCargando(true);
-    void Promise.all([obtenerProductos(), obtenerCategorias()]).then(([ps, cs]) => {
-      setProductos(ps);
-      setCategorias(cs);
-      setCargando(false);
-    });
-  }, []);
+    setError(false);
+    Promise.all([obtenerProductos(), obtenerCategorias()])
+      .then(([ps, cs]) => {
+        setProductos(ps);
+        setCategorias(cs);
+      })
+      .catch(() => setError(true))
+      .finally(() => setCargando(false));
+  };
+  useEffect(cargar, []);
 
   // Aplicación de todos los filtros en memoria
   const filtrados = useMemo(() => {
@@ -99,7 +105,7 @@ export default function Tienda() {
       </div>
 
       {/* Chips de filtros activos */}
-      {(marca || q || categoria) && (
+      {(marca || q || categoria || soloDisponibles || soloOfertas) && (
         <div className="mb-4 flex flex-wrap items-center gap-2 text-sm">
           <span className="text-gris-600">Filtros:</span>
           {q && (
@@ -124,6 +130,16 @@ export default function Tienda() {
               className="rounded-full bg-naranja px-3 py-1 text-white"
             >
               Compatible: {marca}{modelo ? ` ${modelo}` : ''} ✕
+            </button>
+          )}
+          {soloDisponibles && (
+            <button onClick={() => setFiltro('disp', '')} className="rounded-full bg-verde px-3 py-1 text-white">
+              Solo con stock ✕
+            </button>
+          )}
+          {soloOfertas && (
+            <button onClick={() => setFiltro('ofertas', '')} className="rounded-full bg-verde px-3 py-1 text-white">
+              Solo ofertas ✕
             </button>
           )}
         </div>
@@ -189,10 +205,12 @@ export default function Tienda() {
         {/* Grilla */}
         <div className="flex-1">
           <div className="mb-3 text-sm text-gris-600">
-            {cargando ? 'Cargando catálogo…' : `${filtrados.length} producto${filtrados.length === 1 ? '' : 's'}`}
+            {cargando ? 'Cargando catálogo…' : error ? '' : `${filtrados.length} producto${filtrados.length === 1 ? '' : 's'}`}
           </div>
 
-          {!cargando && filtrados.length === 0 && (
+          {error && <EstadoError onReintentar={cargar} />}
+
+          {!cargando && !error && filtrados.length === 0 && (
             <div className="tarjeta py-12 text-center">
               <p className="font-semibold">No encontramos productos con esos filtros.</p>
               <p className="mt-1 text-sm text-gris-600">

@@ -4,8 +4,13 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../stores/useAuth';
 import { useCarrito } from '../stores/useCarrito';
 import { formatearRut, validarRut } from '../utils/rut';
+import { useSeo } from '../utils/seo';
 
 export default function Registro() {
+  useSeo({
+    titulo: 'Crear cuenta',
+    descripcion: 'Crea tu cuenta particular o de empresa/taller: precios mayoristas, cotizaciones formales con folio y compra más rápida.',
+  });
   const navigate = useNavigate();
   const { registrar } = useAuth();
   const sincronizar = useCarrito((s) => s.sincronizarConUsuario);
@@ -78,14 +83,15 @@ export default function Registro() {
 
         <form onSubmit={crear} className="mt-4 space-y-3">
           <div>
-            <label className="etiqueta">Nombre completo</label>
-            <input required value={nombre} onChange={(e) => setNombre(e.target.value)} className="campo" />
+            <label className="etiqueta" htmlFor="reg-nombre">Nombre completo</label>
+            <input id="reg-nombre" autoComplete="name" required value={nombre} onChange={(e) => setNombre(e.target.value)} className="campo" />
           </div>
           {tipo === 'empresa' && (
             <>
               <div>
-                <label className="etiqueta">RUT empresa</label>
+                <label className="etiqueta" htmlFor="reg-rut">RUT empresa</label>
                 <input
+                  id="reg-rut"
                   required
                   value={rut}
                   onChange={(e) => setRut(e.target.value)}
@@ -95,18 +101,18 @@ export default function Registro() {
                 />
               </div>
               <div>
-                <label className="etiqueta">Razón social</label>
-                <input required value={razonSocial} onChange={(e) => setRazonSocial(e.target.value)} placeholder="Forestal Río Simpson Ltda." className="campo" />
+                <label className="etiqueta" htmlFor="reg-razon">Razón social</label>
+                <input id="reg-razon" required value={razonSocial} onChange={(e) => setRazonSocial(e.target.value)} placeholder="Forestal Río Simpson Ltda." className="campo" />
               </div>
             </>
           )}
           <div>
-            <label className="etiqueta">Correo</label>
-            <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="campo" />
+            <label className="etiqueta" htmlFor="reg-correo">Correo</label>
+            <input id="reg-correo" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="campo" />
           </div>
           <div>
-            <label className="etiqueta">Contraseña</label>
-            <input type="password" required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} className="campo" />
+            <label className="etiqueta" htmlFor="reg-clave">Contraseña</label>
+            <input id="reg-clave" type="password" autoComplete="new-password" required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} className="campo" />
           </div>
           {error && <p className="text-sm text-red-600">{error}</p>}
           <button type="submit" disabled={cargando} className="btn-primario w-full py-3">

@@ -7,7 +7,7 @@ import {
 } from 'firebase/firestore';
 import { MODO_DEMO, db } from '../config/firebase';
 import { CATEGORIAS_SEED, PRODUCTOS_SEED } from '../data/seed';
-import type { Categoria, Producto } from '../types';
+import type { AvisoStock, Categoria, Producto } from '../types';
 
 // Cache en memoria para no re-leer el catálogo en cada navegación
 let cacheProductos: Producto[] | null = null;
@@ -125,10 +125,18 @@ export async function ajustarStock(id: string, nuevoStock: number): Promise<void
   invalidarCacheProductos();
 }
 
+// Avisos "cuando llegue stock" en memoria para el modo demo
+const avisosDemo: AvisoStock[] = [];
+
 /** Registra un "avísame cuando llegue" */
 export async function registrarAvisoStock(productoId: string, sku: string, email: string): Promise<void> {
   if (MODO_DEMO) {
-    console.info(`[DEMO] Aviso de stock registrado: ${sku} → ${email}`);
+    avisosDemo.push({
+      id: `aviso-${Date.now()}`,
+      productoId, sku, email,
+      fecha: new Date().toISOString(),
+      notificado: false,
+    });
     return;
   }
   const ref = doc(collection(db!, 'avisosStock'));
@@ -139,9 +147,43 @@ export async function registrarAvisoStock(productoId: string, sku: string, email
   });
 }
 
-/** Productos cuyo stock volvió y tienen avisos pendientes (para el admin) */
-export async function obtenerAvisosPendientes(): Promise<{ sku: string; email: string; fecha: string }[]> {
-  if (MODO_DEMO) return [];
+/** Avisos de stock aún no notificados (para el panel admin) */
+export async function obtenerAvisosPendientes(): Promise<AvisoStock[]> {
+  if (MODO_DEMO) return avisosDemo.filter((a) => !a.notificado);
   const snap = await getDocs(query(collection(db!, 'avisosStock'), where('notificado', '==', false)));
-  return snap.docs.map((d) => d.data() as { sku: string; email: string; fecha: string });
+  return snap.docs.map((d) => ({ ...(d.data() as Omit<AvisoStock, 'id'>), id: d.id }));
+}
+
+/** Marca un aviso como notificado (el admin ya avisó al cliente) */
+export async function marcarAvisoNotificado(id: string): Promise<void> {
+  if (MODO_DEMO) {
+    const a = avisosDemo.find((x) => x.id === id);
+    if (a) a.notificado = true;
+    return;
+  }
+  await updateDoc(doc(db!, 'avisosStock', id), { notificado: true });
+}
+
+// ---------- Categorías (solo admin) ----------
+
+/** Crea o actualiza una categoría */
+export async function guardarCategoria(categoria: Categoria): Promise<void> {
+  if (MODO_DEMO) {
+    const idx = CATEGORIAS_SEED.findIndex((c) => c.id === categoria.id);
+    if (idx >= 0) CATEGORIAS_SEED[idx] = categoria;
+    else CATEGORIAS_SEED.push(categoria);
+    return;
+  }
+  const { id, ...datos } = categoria;
+  await setDoc(doc(db!, 'categorias', id), datos);
+}
+
+/** Elimina una categoría (no toca los productos que la usan) */
+export async function eliminarCategoria(id: string): Promise<void> {
+  if (MODO_DEMO) {
+    const idx = CATEGORIAS_SEED.findIndex((c) => c.id === id);
+    if (idx >= 0) CATEGORIAS_SEED.splice(idx, 1);
+    return;
+  }
+  await deleteDoc(doc(db!, 'categorias', id));
 }
