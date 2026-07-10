@@ -77,4 +77,7 @@ Usuarios demo: `cliente@demo.cl` / `empresa@demo.cl` / `admin@demo.cl`, clave `d
 - Datos legales de referencia en `/terminos` y `/privacidad` (RUT, plazos): validar con el
   cliente antes de producción.
 - Fotos placeholder en varios productos hasta recibir el catálogo oficial del proveedor.
-- Deploy a Firebase Hosting pendiente de `firebase login --reauth` del usuario.
+- Deploy a Firebase pendiente: el CLI ya está autenticado pero **no existe proyecto
+  Firebase para esta tienda** (crear `la-casa-de-la-motosierra`, enlazar con `.firebaserc`,
+  habilitar Firestore/Storage/Auth, `.env` con credenciales web y desplegar hosting+reglas;
+  las functions de pago requieren plan Blaze y sus secretos).
