@@ -75,6 +75,7 @@ export default function Footer() {
           <div className="flex flex-wrap gap-2 text-[11px] font-bold">
             <span className="rounded bg-white px-2.5 py-1 text-[#6E2C8B]">Webpay</span>
             <span className="rounded bg-white px-2.5 py-1 text-[#009EE3]">Mercado Pago</span>
+            <span className="rounded bg-white px-2.5 py-1 text-[#0DC1AC]">Flow</span>
             <span className="rounded bg-white px-2.5 py-1 text-grafito">Transferencia</span>
           </div>
           <div className="mt-5 flex gap-3 text-sm">

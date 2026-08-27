@@ -14,7 +14,7 @@ const SECCIONES: { titulo: string; parrafos: string[] }[] = [
     parrafos: [
       'Datos de cuenta: nombre, correo electrónico y teléfono. Para cuentas de empresa, además RUT y razón social.',
       'Datos de compra: direcciones de despacho, historial de pedidos y cotizaciones, y máquinas registradas para el filtro de compatibilidad.',
-      'Datos de pago: los pagos se procesan directamente en las plataformas de Transbank y Mercado Pago; este sitio no almacena números de tarjeta.',
+      'Datos de pago: los pagos se procesan directamente en las plataformas de Transbank, Mercado Pago y Flow; este sitio no almacena números de tarjeta.',
       'Correo electrónico voluntario para el aviso de reposición de stock ("Avísame cuando llegue").',
     ],
   },

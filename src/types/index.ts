@@ -102,7 +102,7 @@ export interface ItemCarrito {
   preciosPorVolumen: TramoPrecio[];
 }
 
-export type MetodoPago = 'webpay' | 'mercadopago' | 'transferencia';
+export type MetodoPago = 'webpay' | 'mercadopago' | 'flow' | 'transferencia';
 
 export type MetodoEnvio = 'retiro_tienda' | 'starken' | 'chilexpress' | 'bluexpress';
 

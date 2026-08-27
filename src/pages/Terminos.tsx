@@ -27,7 +27,7 @@ const SECCIONES: { titulo: string; parrafos: string[] }[] = [
   {
     titulo: '4. Medios de pago',
     parrafos: [
-      'Se aceptan pagos con tarjetas de débito, crédito y prepago a través de Webpay Plus (Transbank), pagos a través de Mercado Pago, y transferencia electrónica bancaria.',
+      'Se aceptan pagos con tarjetas de débito, crédito y prepago a través de Webpay Plus (Transbank), pagos a través de Mercado Pago, pagos a través de Flow, y transferencia electrónica bancaria.',
       'Los pedidos pagados por transferencia quedan en estado "pendiente de validación" y se preparan una vez confirmada la recepción del pago, dentro de 1 día hábil.',
     ],
   },

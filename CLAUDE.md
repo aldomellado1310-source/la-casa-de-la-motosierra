@@ -81,3 +81,7 @@ Usuarios demo: `cliente@demo.cl` / `empresa@demo.cl` / `admin@demo.cl`, clave `d
   Firebase para esta tienda** (crear `la-casa-de-la-motosierra`, enlazar con `.firebaserc`,
   habilitar Firestore/Storage/Auth, `.env` con credenciales web y desplegar hosting+reglas;
   las functions de pago requieren plan Blaze y sus secretos).
+- Flow ya está integrado (`flowCrear`/`flowConfirmar`/`flowWebhook` en
+  `functions/src/index.ts`) pero falta configurar `FLOW_API_KEY` y `FLOW_SECRET_KEY`
+  (`firebase functions:secrets:set`) con las credenciales reales del cliente en flow.cl
+  antes de salir de modo sandbox.

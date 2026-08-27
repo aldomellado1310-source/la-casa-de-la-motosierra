@@ -27,7 +27,7 @@ const PREGUNTAS: Pregunta[] = [
   {
     seccion: 'Pagos',
     q: '¿Qué medios de pago aceptan?',
-    a: 'Webpay Plus (débito, crédito y prepago), Mercado Pago (con cuotas) y transferencia bancaria. En transferencia, el pedido queda pendiente hasta que validamos el comprobante que subes.',
+    a: 'Webpay Plus (débito, crédito y prepago), Mercado Pago (con cuotas), Flow (tarjetas y transferencia en línea) y transferencia bancaria. En transferencia, el pedido queda pendiente hasta que validamos el comprobante que subes.',
   },
   {
     seccion: 'Pagos',

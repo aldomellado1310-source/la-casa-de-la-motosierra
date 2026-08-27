@@ -1,7 +1,7 @@
 ﻿// ============================================================
 // Checkout: resumen, dirección, método de entrega con costo
 // visible ANTES de pagar, y medios de pago (Webpay / Mercado
-// Pago / transferencia con comprobante).
+// Pago / Flow / transferencia con comprobante).
 // ============================================================
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -9,7 +9,10 @@ import { useAuth } from '../stores/useAuth';
 import { useCarrito } from '../stores/useCarrito';
 import { crearPedido, subirComprobante } from '../services/pedidos';
 import { invalidarCacheProductos, obtenerProducto } from '../services/productos';
-import { DATOS_TRANSFERENCIA, iniciarPagoMercadoPago, iniciarPagoWebpay, redirigirAWebpay } from '../services/pagos';
+import {
+  DATOS_TRANSFERENCIA, iniciarPagoFlow, iniciarPagoMercadoPago, iniciarPagoWebpay,
+  redirigirAFlow, redirigirAWebpay,
+} from '../services/pagos';
 import { REGIONES_CHILE, calcularOpcionesEnvio } from '../services/envios';
 import { formatoCLP } from '../utils/precio';
 import { useSeo } from '../utils/seo';
@@ -18,7 +21,7 @@ import type { Direccion, MetodoEnvio, MetodoPago, Pedido } from '../types';
 export default function Checkout() {
   useSeo({
     titulo: 'Finalizar compra',
-    descripcion: 'Método de entrega con costo visible antes de pagar y pago con Webpay, Mercado Pago o transferencia.',
+    descripcion: 'Método de entrega con costo visible antes de pagar y pago con Webpay, Mercado Pago, Flow o transferencia.',
   });
   const navigate = useNavigate();
   const { usuario } = useAuth();
@@ -124,6 +127,12 @@ export default function Checkout() {
         const url = await iniciarPagoMercadoPago(pedidoId, `Pedido ${pedidoId} — La Casa de la Motosierra`);
         vaciar();
         window.location.href = url;
+        return;
+      }
+      if (metodoPago === 'flow') {
+        const resp = await iniciarPagoFlow(pedidoId, usuario?.email ?? emailInvitado);
+        vaciar();
+        redirigirAFlow(resp);
         return;
       }
       // Transferencia: mostramos datos bancarios y permitimos subir comprobante
@@ -295,6 +304,7 @@ export default function Checkout() {
               {[
                 { id: 'webpay' as const, nombre: 'Webpay Plus', detalle: 'Débito, crédito y prepago — Transbank' },
                 { id: 'mercadopago' as const, nombre: 'Mercado Pago', detalle: 'Tarjetas con cuotas y saldo Mercado Pago' },
+                { id: 'flow' as const, nombre: 'Flow', detalle: 'Tarjetas, transferencia en línea y más medios' },
                 { id: 'transferencia' as const, nombre: 'Transferencia bancaria', detalle: 'Sube el comprobante; validamos y despachamos' },
               ].map((mp) => (
                 <label

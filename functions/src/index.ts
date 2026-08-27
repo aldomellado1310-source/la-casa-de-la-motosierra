@@ -2,24 +2,34 @@
 // Cloud Functions — La Casa de la Motosierra
 //
 // - webpayCrear / webpayConfirmar: flujo Webpay Plus (Transbank)
-// - mercadoPagoCrear: preferencia de Checkout Pro
+// - mercadoPagoCrear / mercadoPagoConfirmar: Checkout Pro
+// - flowCrear / flowConfirmar / flowWebhook: flujo Flow.cl
 // - generarPdfCotizacion: PDF en servidor, guardado en Storage
 //
 // CREDENCIALES (variables de entorno / secretos de Functions):
 //   WEBPAY_COMMERCE_CODE  → código de comercio Transbank (producción)
 //   WEBPAY_API_KEY        → API key secreta Transbank (producción)
 //   MP_ACCESS_TOKEN       → access token de Mercado Pago
-// Sin credenciales se usa el ambiente de INTEGRACIÓN de Transbank
-// (tarjetas de prueba) para poder probar el flujo completo.
+//   FLOW_API_KEY          → API key de Flow (Configuración > API en flow.cl)
+//   FLOW_SECRET_KEY       → secret key de Flow (para firmar las peticiones)
+// Sin credenciales de Webpay se usa el ambiente de INTEGRACIÓN de
+// Transbank (tarjetas de prueba) para poder probar el flujo completo.
 //
 // Configurar con:
 //   firebase functions:secrets:set WEBPAY_COMMERCE_CODE
 //   firebase functions:secrets:set WEBPAY_API_KEY
 //   firebase functions:secrets:set MP_ACCESS_TOKEN
+//   firebase functions:secrets:set FLOW_API_KEY
+//   firebase functions:secrets:set FLOW_SECRET_KEY
+//
+// Flow: mientras se prueba con las credenciales de sandbox
+// (https://www.flow.cl/docs/api.html#tag/Ambiente-sandbox), definir la
+// variable de entorno FLOW_SANDBOX=true en functions/.env.
 // ============================================================
 import { onRequest } from 'firebase-functions/v2/https';
 import { defineSecret } from 'firebase-functions/params';
 import * as admin from 'firebase-admin';
+import * as crypto from 'crypto';
 import PDFDocument from 'pdfkit';
 import {
   Options, IntegrationApiKeys, IntegrationCommerceCodes, Environment, WebpayPlus,
@@ -33,6 +43,8 @@ const db = admin.firestore();
 const WEBPAY_COMMERCE_CODE = defineSecret('WEBPAY_COMMERCE_CODE');
 const WEBPAY_API_KEY = defineSecret('WEBPAY_API_KEY');
 const MP_ACCESS_TOKEN = defineSecret('MP_ACCESS_TOKEN');
+const FLOW_API_KEY = defineSecret('FLOW_API_KEY');
+const FLOW_SECRET_KEY = defineSecret('FLOW_SECRET_KEY');
 
 /** Construye la transacción Webpay: producción si hay secretos, integración si no */
 function transaccionWebpay(): InstanceType<typeof WebpayPlus.Transaction> {
@@ -256,6 +268,190 @@ export const mercadoPagoConfirmar = onRequest(
     } catch (e) {
       console.error('mercadoPagoConfirmar:', e);
       res.status(500).json({ error: 'No se pudo verificar el pago con Mercado Pago' });
+    }
+  },
+);
+
+// ------------------------------------------------------------
+// Flow: helpers de firma y llamadas a la API
+// (https://www.flow.cl/docs/api.html)
+// ------------------------------------------------------------
+
+/** Firma un conjunto de parámetros con HMAC-SHA256, como exige Flow */
+function firmarFlow(params: Record<string, string>, secretKey: string): string {
+  const claves = Object.keys(params).sort();
+  const texto = claves.map((k) => `${k}${params[k]}`).join('');
+  return crypto.createHmac('sha256', secretKey).update(texto).digest('hex');
+}
+
+/** POST/GET autenticado contra la API de Flow (agrega apiKey + firma) */
+async function llamarFlow(
+  ruta: string,
+  params: Record<string, string>,
+  metodo: 'GET' | 'POST',
+): Promise<Record<string, unknown>> {
+  const apiKey = process.env.FLOW_API_KEY;
+  const secretKey = process.env.FLOW_SECRET_KEY;
+  if (!apiKey || !secretKey) {
+    throw new Error('FLOW_API_KEY / FLOW_SECRET_KEY no configurados');
+  }
+  const baseUrl = process.env.FLOW_SANDBOX === 'true'
+    ? 'https://sandbox.flow.cl/api'
+    : 'https://www.flow.cl/api';
+  const conApiKey = { ...params, apiKey };
+  const s = firmarFlow(conApiKey, secretKey);
+  const cuerpo = new URLSearchParams({ ...conApiKey, s });
+
+  const res = metodo === 'GET'
+    ? await fetch(`${baseUrl}${ruta}?${cuerpo.toString()}`)
+    : await fetch(`${baseUrl}${ruta}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: cuerpo.toString(),
+    });
+  const datos = (await res.json()) as Record<string, unknown>;
+  if (!res.ok) {
+    throw new Error(`Flow respondió ${res.status}: ${JSON.stringify(datos)}`);
+  }
+  return datos;
+}
+
+/** URL pública de otra función v2 en la misma región/proyecto (para urlConfirmation) */
+function urlFuncion(nombre: string): string {
+  const projectId = process.env.GCLOUD_PROJECT ?? admin.app().options.projectId;
+  return `https://southamerica-west1-${projectId}.cloudfunctions.net/${nombre}`;
+}
+
+interface ResultadoCommitFlow {
+  aprobado: boolean;
+  pedidoId: string;
+  codigoAutorizacion?: string;
+  monto?: number;
+}
+
+/**
+ * Consulta el estado real de una orden de pago en Flow (getStatus) y
+ * actualiza el pedido asociado. Se usa tanto desde el webhook de Flow
+ * (urlConfirmation, servidor a servidor) como desde flowConfirmar
+ * (llamado por el frontend al volver del formulario de pago) — el
+ * resultado siempre se valida contra la API de Flow, nunca contra la
+ * URL de retorno del navegador.
+ */
+async function verificarPagoFlow(token: string): Promise<ResultadoCommitFlow> {
+  const datos = await llamarFlow('/payment/getStatus', { token }, 'GET');
+  const status = Number(datos.status); // 1 pendiente, 2 pagada, 3 rechazada, 4 anulada
+  const pedidoIdOrden = String(datos.commerceOrder ?? '');
+  const montoFlow = Number(datos.amount ?? 0);
+  const flowOrder = datos.flowOrder != null ? String(datos.flowOrder) : token;
+  let aprobado = status === 2;
+  let pedidoId = pedidoIdOrden;
+
+  if (pedidoIdOrden) {
+    const ref = db.collection('pedidos').doc(pedidoIdOrden);
+    const snap = await ref.get();
+    if (snap.exists) {
+      pedidoId = snap.id;
+      // El monto pagado debe coincidir con el total del pedido
+      const totalPedido = (snap.data() as { total: number }).total;
+      aprobado = aprobado && Math.round(montoFlow) === Math.round(totalPedido);
+      await ref.update({
+        estado: aprobado ? 'pagado' : 'pendiente_pago',
+        referenciaPago: flowOrder,
+      });
+      if (aprobado) await descontarStockPedido(ref);
+    }
+  }
+  return { aprobado, pedidoId, codigoAutorizacion: flowOrder, monto: montoFlow };
+}
+
+// ------------------------------------------------------------
+// Flow: crear orden de pago
+// ------------------------------------------------------------
+export const flowCrear = onRequest(
+  { secrets: [FLOW_API_KEY, FLOW_SECRET_KEY], region: 'southamerica-west1' },
+  async (req, res) => {
+    conCors(res);
+    if (req.method === 'OPTIONS') { res.status(204).send(''); return; }
+    try {
+      const { pedidoId, email, returnUrl } = req.body as {
+        pedidoId: string; email: string; returnUrl: string;
+      };
+      if (!pedidoId || !email || !returnUrl) {
+        res.status(400).json({ error: 'Faltan parámetros: pedidoId, email, returnUrl' });
+        return;
+      }
+      const monto = await totalDePedido(pedidoId);
+      if (monto === null) {
+        res.status(404).json({ error: 'Pedido no encontrado o sin total válido' });
+        return;
+      }
+      const datos = await llamarFlow('/payment/create', {
+        commerceOrder: pedidoId,
+        subject: `Pedido ${pedidoId} - La Casa de la Motosierra`.slice(0, 45),
+        currency: 'CLP',
+        amount: String(monto),
+        email,
+        urlConfirmation: urlFuncion('flowWebhook'),
+        urlReturn: returnUrl,
+      }, 'POST');
+      if (!datos.url || !datos.token) {
+        console.error('flowCrear: respuesta inesperada de Flow', datos);
+        res.status(502).json({ error: 'Flow no devolvió una URL de pago válida' });
+        return;
+      }
+      // Asociamos el token al pedido para poder ubicarlo desde el webhook
+      await db.collection('pedidos').doc(pedidoId).update({ referenciaPago: String(datos.token) });
+      res.json({ url: datos.url, token: datos.token });
+    } catch (e) {
+      console.error('flowCrear:', e);
+      res.status(500).json({ error: 'No se pudo crear la orden de pago en Flow' });
+    }
+  },
+);
+
+// ------------------------------------------------------------
+// Flow: confirmar el pago (llamado por el frontend al volver del
+// formulario de pago; verifica contra la API, no contra la URL)
+// ------------------------------------------------------------
+export const flowConfirmar = onRequest(
+  { secrets: [FLOW_API_KEY, FLOW_SECRET_KEY], region: 'southamerica-west1' },
+  async (req, res) => {
+    conCors(res);
+    if (req.method === 'OPTIONS') { res.status(204).send(''); return; }
+    try {
+      const { token } = req.body as { token: string };
+      if (!token) {
+        res.status(400).json({ error: 'Falta el token de la transacción' });
+        return;
+      }
+      res.json(await verificarPagoFlow(token));
+    } catch (e) {
+      console.error('flowConfirmar:', e);
+      res.status(500).json({ error: 'No se pudo confirmar el pago con Flow' });
+    }
+  },
+);
+
+// ------------------------------------------------------------
+// Flow: webhook servidor a servidor (urlConfirmation). Flow llama
+// este endpoint de forma asíncrona apenas cambia el estado del pago,
+// independiente de si el cliente cerró el navegador antes de volver.
+// ------------------------------------------------------------
+export const flowWebhook = onRequest(
+  { secrets: [FLOW_API_KEY, FLOW_SECRET_KEY], region: 'southamerica-west1' },
+  async (req, res) => {
+    try {
+      const token = (req.body as { token?: string } | undefined)?.token
+        ?? (req.query.token as string | undefined);
+      if (!token) {
+        res.status(400).send('Falta token');
+        return;
+      }
+      await verificarPagoFlow(token);
+      res.status(200).send('OK');
+    } catch (e) {
+      console.error('flowWebhook:', e);
+      res.status(500).send('Error');
     }
   },
 );

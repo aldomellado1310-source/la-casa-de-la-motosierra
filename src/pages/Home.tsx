@@ -112,7 +112,7 @@ export default function Home() {
             {[
               [IconoCarrito, 'Retiro en tienda', 'Gratis en Puerto Aysén'],
               [IconoCamion, 'Despachos a todo Chile', 'Cotiza tu envío en el checkout'],
-              [IconoEscudo, 'Métodos de pago', 'Webpay, Mercado Pago, transferencia'],
+              [IconoEscudo, 'Métodos de pago', 'Webpay, Mercado Pago, Flow, transferencia'],
               [IconoDocumento, 'Cotizaciones para empresas', 'Genera cotizaciones formales en PDF'],
             ].map(([Icono, titulo, detalle], i) => (
               <div key={titulo as string} className={`flex items-start gap-3 p-3.5 ${i > 0 ? 'border-t border-borde' : ''}`}>

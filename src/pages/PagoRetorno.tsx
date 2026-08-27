@@ -1,13 +1,14 @@
 // ============================================================
 // Página de retorno de pago: confirma (commit) la transacción
 // Webpay con la Cloud Function, verifica el pago de Mercado
-// Pago contra su API, o muestra el resultado de transferencia.
-// El estado del pedido SIEMPRE lo fija el servidor (o el modo
-// demo dentro de los servicios); esta página solo muestra.
+// Pago o Flow contra su API, o muestra el resultado de
+// transferencia. El estado del pedido SIEMPRE lo fija el
+// servidor (o el modo demo dentro de los servicios); esta
+// página solo muestra.
 // ============================================================
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { confirmarPagoMercadoPago, confirmarPagoWebpay } from '../services/pagos';
+import { confirmarPagoFlow, confirmarPagoMercadoPago, confirmarPagoWebpay } from '../services/pagos';
 import { useAuth } from '../stores/useAuth';
 import { useSeo } from '../utils/seo';
 import { IconoAlerta, IconoCheck, IconoDocumento, IconoReloj } from '../components/Iconos';
@@ -27,6 +28,7 @@ export default function PagoRetorno() {
 
   useEffect(() => {
     const tokenWs = params.get('token_ws');
+    const tokenFlow = params.get('token'); // retorno de Flow
     const mp = params.get('mp') ?? params.get('status'); // retorno de Mercado Pago
     const transferencia = params.get('transferencia');
     const pedido = params.get('pedido') ?? params.get('external_reference') ?? '';
@@ -82,6 +84,26 @@ export default function PagoRetorno() {
         .catch(() => {
           setEstado('error');
           setDetalle('No pudimos confirmar el pago con Webpay. Si el cargo aparece en tu tarjeta, contáctanos por WhatsApp.');
+        });
+      return;
+    }
+
+    // --- Flow: confirmar el pago con getStatus (el servidor actualiza el pedido) ---
+    if (tokenFlow) {
+      void confirmarPagoFlow(tokenFlow)
+        .then((r) => {
+          if (r.aprobado) {
+            setPedidoId(r.pedidoId);
+            setEstado('exito');
+            setDetalle(`Pago aprobado con Flow. Pedido ${r.pedidoId}.`);
+          } else {
+            setEstado('error');
+            setDetalle('El pago no fue aprobado por Flow. No se realizó ningún cargo.');
+          }
+        })
+        .catch(() => {
+          setEstado('error');
+          setDetalle('No pudimos confirmar el pago con Flow. Si el cargo aparece en tu tarjeta, contáctanos por WhatsApp.');
         });
       return;
     }
