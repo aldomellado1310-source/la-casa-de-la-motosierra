@@ -10,13 +10,15 @@ import { useCarrito } from '../stores/useCarrito';
 import { crearPedido, subirComprobante } from '../services/pedidos';
 import { invalidarCacheProductos, obtenerProducto } from '../services/productos';
 import {
-  DATOS_TRANSFERENCIA, iniciarPagoFlow, iniciarPagoMercadoPago, iniciarPagoWebpay,
+  DATOS_TRANSFERENCIA, MP_CUOTAS_MAXIMAS, iniciarPagoFlow, iniciarPagoMercadoPago, iniciarPagoWebpay,
   redirigirAFlow, redirigirAWebpay,
 } from '../services/pagos';
 import { REGIONES_CHILE, calcularOpcionesEnvio } from '../services/envios';
+import { calcularDescuento, cuponVigente, obtenerCuponPorCodigo } from '../services/cupones';
 import { formatoCLP } from '../utils/precio';
 import { useSeo } from '../utils/seo';
-import type { Direccion, MetodoEnvio, MetodoPago, Pedido } from '../types';
+import { IconoCheck } from '../components/Iconos';
+import type { Cupon, Direccion, MetodoEnvio, MetodoPago, Pedido } from '../types';
 
 export default function Checkout() {
   useSeo({
@@ -40,13 +42,56 @@ export default function Checkout() {
   const [pedidoTransferencia, setPedidoTransferencia] = useState<{ id: string; total: number } | null>(null);
   const [emailInvitado, setEmailInvitado] = useState('');
   const [nombreInvitado, setNombreInvitado] = useState('');
+  const [codigoCupon, setCodigoCupon] = useState('');
+  const [cupon, setCupon] = useState<Cupon | null>(null);
+  const [errorCupon, setErrorCupon] = useState('');
+  const [aplicandoCupon, setAplicandoCupon] = useState(false);
 
   // Peso estimado del paquete: 1 kg por unidad (aproximación simple)
   const pesoEstimado = items.reduce((acc, i) => acc + i.cantidad, 0);
   const opcionesEnvio = useMemo(() => calcularOpcionesEnvio(region, pesoEstimado), [region, pesoEstimado]);
   const envioElegido = opcionesEnvio.find((o) => o.metodo === metodoEnvio) ?? opcionesEnvio[0];
   const costoEnvio = envioElegido.costo;
-  const totalFinal = total() + costoEnvio;
+  // El descuento del cupón se aplica sobre el subtotal, nunca sobre el envío
+  const descuento = cupon ? calcularDescuento(cupon, total()) : 0;
+  const totalFinal = total() + costoEnvio - descuento;
+
+  const aplicarCupon = async () => {
+    setErrorCupon('');
+    if (!codigoCupon.trim()) return;
+    setAplicandoCupon(true);
+    try {
+      const encontrado = await obtenerCuponPorCodigo(codigoCupon);
+      if (!encontrado || !cuponVigente(encontrado)) {
+        setErrorCupon('El código ingresado no es válido o ya venció.');
+        setCupon(null);
+        return;
+      }
+      setCupon(encontrado);
+    } catch {
+      setErrorCupon('No se pudo validar el código. Inténtalo de nuevo.');
+    } finally {
+      setAplicandoCupon(false);
+    }
+  };
+
+  const quitarCupon = () => {
+    setCupon(null);
+    setCodigoCupon('');
+    setErrorCupon('');
+  };
+
+  // Pasos del checkout: solo informativo/orientación, se marcan como
+  // completos según lo que ya está validado (no bloquean el scroll).
+  const direccionGuardadaSeleccionada = usuario?.direcciones.find((d) => d.id === direccionId);
+  const direccionCompleta = metodoEnvio === 'retiro_tienda'
+    || !!direccionGuardadaSeleccionada
+    || !!(dirNueva.calle.trim() && dirNueva.comuna.trim());
+  const pasos = [
+    ...(!usuario ? [{ id: 'datos', etiqueta: 'Tus datos', completo: !!nombreInvitado.trim() && !!emailInvitado.trim() }] : []),
+    { id: 'entrega', etiqueta: 'Entrega', completo: direccionCompleta },
+    { id: 'pago', etiqueta: 'Pago', completo: false },
+  ];
 
   if (items.length === 0 && !pedidoTransferencia) {
     return (
@@ -108,6 +153,7 @@ export default function Checkout() {
         items,
         subtotal: total(),
         costoEnvio,
+        ...(cupon ? { descuento, cuponCodigo: cupon.codigo } : {}),
         total: totalFinal,
         metodoPago,
         metodoEnvio,
@@ -197,7 +243,22 @@ export default function Checkout() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-6">
-      <h1 className="mb-6 titulo-seccion">Finalizar compra</h1>
+      <h1 className="mb-4 titulo-seccion">Finalizar compra</h1>
+
+      {/* Progreso del checkout — orientación, no bloquea el scroll */}
+      <ol className="mb-6 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs font-semibold sm:text-sm">
+        {pasos.map((p, i) => (
+          <li key={p.id} className="flex items-center gap-1.5">
+            <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${
+              p.completo ? 'bg-verde text-white' : 'border border-borde text-gris-600'
+            }`}>
+              {p.completo ? <IconoCheck className="h-3.5 w-3.5" /> : i + 1}
+            </span>
+            <span className={p.completo ? 'text-verde' : 'text-grafito'}>{p.etiqueta}</span>
+            {i < pasos.length - 1 && <span className="mx-1 text-borde">→</span>}
+          </li>
+        ))}
+      </ol>
 
       <div className="flex flex-col gap-6 lg:flex-row">
         <div className="flex-1 space-y-6">
@@ -303,7 +364,7 @@ export default function Checkout() {
             <div className="space-y-2">
               {[
                 { id: 'webpay' as const, nombre: 'Webpay Plus', detalle: 'Débito, crédito y prepago — Transbank' },
-                { id: 'mercadopago' as const, nombre: 'Mercado Pago', detalle: 'Tarjetas con cuotas y saldo Mercado Pago' },
+                { id: 'mercadopago' as const, nombre: 'Mercado Pago', detalle: `Tarjetas hasta en ${MP_CUOTAS_MAXIMAS} cuotas y saldo Mercado Pago` },
                 { id: 'flow' as const, nombre: 'Flow', detalle: 'Tarjetas, transferencia en línea y más medios' },
                 { id: 'transferencia' as const, nombre: 'Transferencia bancaria', detalle: 'Sube el comprobante; validamos y despachamos' },
               ].map((mp) => (
@@ -336,8 +397,48 @@ export default function Checkout() {
                 </li>
               ))}
             </ul>
+            {/* Cupón de descuento */}
+            <div className="mt-3 border-t border-borde pt-3">
+              {cupon ? (
+                <div className="flex items-center justify-between rounded-lg bg-verde/10 px-3 py-2 text-xs">
+                  <span className="font-semibold text-verde">
+                    Cupón {cupon.codigo} aplicado
+                    {cupon.tipo === 'porcentaje' ? ` (−${cupon.valor}%)` : ''}
+                  </span>
+                  <button type="button" onClick={quitarCupon} className="font-semibold text-red-600 hover:underline">
+                    Quitar
+                  </button>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <input
+                    value={codigoCupon}
+                    onChange={(e) => setCodigoCupon(e.target.value)}
+                    placeholder="Código de descuento"
+                    aria-label="Código de descuento"
+                    className="campo flex-1 text-sm"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => void aplicarCupon()}
+                    disabled={aplicandoCupon || !codigoCupon.trim()}
+                    className="btn-secundario shrink-0 px-4"
+                  >
+                    {aplicandoCupon ? 'Validando…' : 'Aplicar'}
+                  </button>
+                </div>
+              )}
+              {errorCupon && <p className="mt-1.5 text-xs text-red-600">{errorCupon}</p>}
+            </div>
+
             <div className="mt-3 space-y-1 border-t border-borde pt-3 text-sm">
               <div className="flex justify-between"><span>Subtotal</span><span>{formatoCLP(total())}</span></div>
+              {descuento > 0 && (
+                <div className="flex justify-between text-verde">
+                  <span>Descuento ({cupon?.codigo})</span>
+                  <span className="font-semibold">−{formatoCLP(descuento)}</span>
+                </div>
+              )}
               <div className="flex justify-between">
                 <span>Envío ({envioElegido.nombre})</span>
                 <span className={costoEnvio === 0 ? 'font-semibold text-verde' : ''}>

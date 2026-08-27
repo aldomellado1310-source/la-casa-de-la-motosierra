@@ -10,8 +10,36 @@ import { MODO_DEMO, db, storage } from '../config/firebase';
 import { ajustarStock, invalidarCacheProductos, obtenerProducto } from './productos';
 import type { EstadoPedido, Pedido } from '../types';
 
-// Almacén en memoria para modo demo
-const pedidosDemo: Pedido[] = [];
+// ------------------------------------------------------------
+// Almacén en memoria para modo demo, respaldado en sessionStorage.
+// Webpay/Mercado Pago/Flow redirigen con window.location.href incluso
+// en demo (para simular el flujo real de pasarela con redirección),
+// lo que recarga la página y borraría un array puramente en memoria.
+// sessionStorage sobrevive esa recarga dentro de la misma pestaña,
+// sin persistir entre sesiones distintas (coherente con "modo demo").
+// ------------------------------------------------------------
+const CLAVE_PEDIDOS_DEMO = 'pedidos-demo-lcm';
+
+function cargarPedidosDemo(): Pedido[] {
+  if (typeof sessionStorage === 'undefined') return [];
+  try {
+    const crudo = sessionStorage.getItem(CLAVE_PEDIDOS_DEMO);
+    return crudo ? (JSON.parse(crudo) as Pedido[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function guardarPedidosDemo(): void {
+  if (typeof sessionStorage === 'undefined') return;
+  try {
+    sessionStorage.setItem(CLAVE_PEDIDOS_DEMO, JSON.stringify(pedidosDemo));
+  } catch {
+    // Almacenamiento lleno o no disponible: seguimos funcionando solo en memoria
+  }
+}
+
+const pedidosDemo: Pedido[] = cargarPedidosDemo();
 
 /**
  * Genera un id de pedido legible: PED-20260706-XXXXXXXX.
@@ -32,6 +60,7 @@ export async function crearPedido(pedido: Omit<Pedido, 'id'>): Promise<string> {
   const id = generarIdPedido();
   if (MODO_DEMO) {
     pedidosDemo.push({ ...pedido, id });
+    guardarPedidosDemo();
     return id;
   }
   await setDoc(doc(db!, 'pedidos', id), pedido);
@@ -76,6 +105,7 @@ export async function actualizarEstadoPedido(id: string, estado: EstadoPedido, r
     if (p) {
       p.estado = estado;
       if (referenciaPago) p.referenciaPago = referenciaPago;
+      guardarPedidosDemo();
     }
     return;
   }
@@ -99,6 +129,7 @@ export async function descontarStockPedido(id: string): Promise<void> {
       if (prod) await ajustarStock(item.productoId, Math.max(0, prod.stock - item.cantidad));
     }
     p.stockDescontado = true;
+    guardarPedidosDemo();
     return;
   }
   const refPedido = doc(db!, 'pedidos', id);
@@ -123,6 +154,7 @@ export async function subirComprobante(pedidoId: string, archivo: File): Promise
     if (p) {
       p.comprobanteUrl = `demo://${archivo.name}`;
       p.estado = 'pendiente_validacion';
+      guardarPedidosDemo();
     }
     return `demo://${archivo.name}`;
   }

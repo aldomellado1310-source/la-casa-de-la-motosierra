@@ -8,12 +8,21 @@
 // ============================================================
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { confirmarPagoFlow, confirmarPagoMercadoPago, confirmarPagoWebpay } from '../services/pagos';
+import { confirmarPagoFlow, confirmarPagoMercadoPago, confirmarPagoWebpay, reintentarPago } from '../services/pagos';
+import { obtenerPedidoPorId } from '../services/pedidos';
 import { useAuth } from '../stores/useAuth';
+import { WHATSAPP_NUMERO } from '../config/firebase';
 import { useSeo } from '../utils/seo';
 import { IconoAlerta, IconoCheck, IconoDocumento, IconoReloj } from '../components/Iconos';
+import type { Pedido } from '../types';
 
 type Estado = 'procesando' | 'exito' | 'pendiente' | 'error';
+
+/** Link de WhatsApp con mensaje prellenado, referenciando el pedido si se conoce */
+function enlaceWhatsApp(pedidoId: string): string {
+  const mensaje = pedidoId ? `Hola, tengo una duda sobre mi pedido ${pedidoId}` : 'Hola, tengo una duda sobre un pago';
+  return `https://wa.me/${WHATSAPP_NUMERO}?text=${encodeURIComponent(mensaje)}`;
+}
 
 export default function PagoRetorno() {
   useSeo({
@@ -25,6 +34,9 @@ export default function PagoRetorno() {
   const [estado, setEstado] = useState<Estado>('procesando');
   const [detalle, setDetalle] = useState('');
   const [pedidoId, setPedidoId] = useState('');
+  const [pedido, setPedido] = useState<Pedido | null>(null);
+  const [reintentando, setReintentando] = useState(false);
+  const [errorReintento, setErrorReintento] = useState('');
 
   useEffect(() => {
     const tokenWs = params.get('token_ws');
@@ -37,7 +49,7 @@ export default function PagoRetorno() {
     if (transferencia === 'ok') {
       setPedidoId(pedido);
       setEstado('pendiente');
-      setDetalle(`Recibimos tu comprobante del pedido ${pedido}. Validaremos el pago a la brevedad; puedes revisar el avance en el seguimiento con tu número de pedido o escribirnos por WhatsApp.`);
+      setDetalle(`Recibimos tu comprobante del pedido ${pedido}. Validaremos el pago a la brevedad; puedes revisar el avance en el seguimiento con tu número de pedido.`);
       return;
     }
 
@@ -51,17 +63,19 @@ export default function PagoRetorno() {
             setEstado(aprobado ? 'exito' : 'error');
             setDetalle(aprobado
               ? `Tu pago con Mercado Pago fue verificado y aprobado. Pedido ${pedido}.`
-              : 'No pudimos verificar el pago con Mercado Pago. Si el cargo aparece en tu tarjeta, contáctanos por WhatsApp.');
+              : 'No pudimos verificar el pago con Mercado Pago. Si el cargo aparece en tu tarjeta, contáctanos.');
           })
           .catch(() => {
+            setPedidoId(pedido);
             setEstado('error');
-            setDetalle('No pudimos verificar el pago con Mercado Pago. Si el cargo aparece en tu tarjeta, contáctanos por WhatsApp.');
+            setDetalle('No pudimos verificar el pago con Mercado Pago. Si el cargo aparece en tu tarjeta, contáctanos.');
           });
       } else if (mp === 'pending') {
         setPedidoId(pedido);
         setEstado('pendiente');
         setDetalle(`Tu pago está pendiente de acreditación en Mercado Pago. Pedido ${pedido}. Puedes revisar el avance en el seguimiento.`);
       } else {
+        setPedidoId(pedido);
         setEstado('error');
         setDetalle('El pago no fue completado en Mercado Pago.');
       }
@@ -72,8 +86,8 @@ export default function PagoRetorno() {
     if (tokenWs) {
       void confirmarPagoWebpay(tokenWs)
         .then((r) => {
+          setPedidoId(r.pedidoId);
           if (r.aprobado) {
-            setPedidoId(r.pedidoId);
             setEstado('exito');
             setDetalle(`Pago aprobado con Webpay. Pedido ${r.pedidoId} · Autorización ${r.codigoAutorizacion ?? '—'}.`);
           } else {
@@ -83,7 +97,7 @@ export default function PagoRetorno() {
         })
         .catch(() => {
           setEstado('error');
-          setDetalle('No pudimos confirmar el pago con Webpay. Si el cargo aparece en tu tarjeta, contáctanos por WhatsApp.');
+          setDetalle('No pudimos confirmar el pago con Webpay. Si el cargo aparece en tu tarjeta, contáctanos.');
         });
       return;
     }
@@ -92,8 +106,8 @@ export default function PagoRetorno() {
     if (tokenFlow) {
       void confirmarPagoFlow(tokenFlow)
         .then((r) => {
+          setPedidoId(r.pedidoId);
           if (r.aprobado) {
-            setPedidoId(r.pedidoId);
             setEstado('exito');
             setDetalle(`Pago aprobado con Flow. Pedido ${r.pedidoId}.`);
           } else {
@@ -103,7 +117,7 @@ export default function PagoRetorno() {
         })
         .catch(() => {
           setEstado('error');
-          setDetalle('No pudimos confirmar el pago con Flow. Si el cargo aparece en tu tarjeta, contáctanos por WhatsApp.');
+          setDetalle('No pudimos confirmar el pago con Flow. Si el cargo aparece en tu tarjeta, contáctanos.');
         });
       return;
     }
@@ -112,6 +126,26 @@ export default function PagoRetorno() {
     setEstado('error');
     setDetalle('El pago fue cancelado antes de completarse. Puedes intentarlo de nuevo cuando quieras.');
   }, [params]);
+
+  // Trae los datos del pedido (para reintentar el pago y para prellenar
+  // "crear cuenta con estos datos") una vez que se conoce su id.
+  useEffect(() => {
+    if (!pedidoId) { setPedido(null); return; }
+    void obtenerPedidoPorId(pedidoId).then(setPedido).catch(() => setPedido(null));
+  }, [pedidoId]);
+
+  /** Reintenta el pago del MISMO pedido (no crea uno nuevo) */
+  const manejarReintento = async () => {
+    if (!pedido) return;
+    setReintentando(true);
+    setErrorReintento('');
+    try {
+      await reintentarPago(pedido);
+    } catch (e) {
+      setErrorReintento(e instanceof Error ? e.message : 'No se pudo reintentar el pago.');
+      setReintentando(false);
+    }
+  };
 
   const contenido = {
     procesando: { Icono: IconoReloj, titulo: 'Confirmando tu pago…', clase: 'text-verde' },
@@ -126,6 +160,17 @@ export default function PagoRetorno() {
         <contenido.Icono className={`mx-auto h-14 w-14 ${contenido.clase}`} />
         <h1 className={`mt-4 text-2xl font-extrabold ${contenido.clase}`}>{contenido.titulo}</h1>
         <p className="mt-2 text-sm text-grafito/80">{detalle}</p>
+        {(estado === 'pendiente' || estado === 'error') && (
+          <a
+            href={enlaceWhatsApp(pedidoId)}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-2 inline-block text-sm font-semibold text-verde hover:underline"
+          >
+            Escríbenos por WhatsApp →
+          </a>
+        )}
+        {errorReintento && <p className="mt-2 text-sm text-red-600">{errorReintento}</p>}
         <div className="mt-6 flex flex-col justify-center gap-2 sm:flex-row">
           {estado === 'exito' || estado === 'pendiente' ? (
             usuario ? (
@@ -134,8 +179,22 @@ export default function PagoRetorno() {
               <Link to={`/seguimiento${pedidoId ? `?pedido=${pedidoId}` : ''}`} className="btn-primario">Seguir mi pedido</Link>
             )
           ) : estado === 'error' ? (
-            <Link to="/carrito" className="btn-primario">Reintentar pago</Link>
+            pedido && pedido.metodoPago !== 'transferencia' ? (
+              <button onClick={() => void manejarReintento()} disabled={reintentando} className="btn-primario">
+                {reintentando ? 'Reintentando…' : 'Reintentar pago'}
+              </button>
+            ) : (
+              <Link to="/carrito" className="btn-primario">Reintentar pago</Link>
+            )
           ) : null}
+          {!usuario && pedido && (estado === 'exito' || estado === 'pendiente') && (
+            <Link
+              to={`/registro?nombre=${encodeURIComponent(pedido.nombreCliente)}&email=${encodeURIComponent(pedido.emailCliente)}`}
+              className="btn-secundario"
+            >
+              Crear cuenta con estos datos
+            </Link>
+          )}
           <Link to="/tienda" className="btn-secundario">Seguir comprando</Link>
         </div>
       </div>

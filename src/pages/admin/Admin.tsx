@@ -6,9 +6,10 @@ import AdminPedidos from './AdminPedidos';
 import AdminCotizaciones from './AdminCotizaciones';
 import AdminCategorias from './AdminCategorias';
 import AdminClientes from './AdminClientes';
+import AdminCupones from './AdminCupones';
 import { MODO_DEMO } from '../../config/firebase';
 
-type Pestania = 'resumen' | 'productos' | 'categorias' | 'pedidos' | 'cotizaciones' | 'clientes';
+type Pestania = 'resumen' | 'productos' | 'categorias' | 'pedidos' | 'cotizaciones' | 'clientes' | 'cupones';
 
 export default function Admin() {
   const [pestania, setPestania] = useState<Pestania>('resumen');
@@ -20,6 +21,7 @@ export default function Admin() {
     { id: 'pedidos', texto: 'Pedidos' },
     { id: 'cotizaciones', texto: 'Cotizaciones' },
     { id: 'clientes', texto: 'Clientes' },
+    { id: 'cupones', texto: 'Cupones' },
   ];
 
   return (
@@ -52,6 +54,7 @@ export default function Admin() {
       {pestania === 'pedidos' && <AdminPedidos />}
       {pestania === 'cotizaciones' && <AdminCotizaciones />}
       {pestania === 'clientes' && <AdminClientes />}
+      {pestania === 'cupones' && <AdminCupones />}
     </div>
   );
 }

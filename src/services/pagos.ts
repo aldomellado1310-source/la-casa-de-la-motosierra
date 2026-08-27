@@ -5,6 +5,7 @@
 // ============================================================
 import { FUNCTIONS_URL, MODO_DEMO } from '../config/firebase';
 import { actualizarEstadoPedido, descontarStockPedido } from './pedidos';
+import type { Pedido } from '../types';
 
 /** Datos bancarios para pago por transferencia */
 export const DATOS_TRANSFERENCIA = {
@@ -15,6 +16,15 @@ export const DATOS_TRANSFERENCIA = {
   rut: '77.123.456-7',
   email: 'pagos@lacasadelamotosierra.cl',
 };
+
+/**
+ * Cuotas máximas configuradas en la cuenta de Mercado Pago del comercio.
+ * Es solo informativo para el checkout: el número real de cuotas que ve
+ * cada cliente depende de su tarjeta/banco y lo decide Mercado Pago en
+ * su propio Checkout Pro. Ajustar si cambia la configuración en el panel
+ * de Mercado Pago (Tu negocio > Configuración > Cuotas).
+ */
+export const MP_CUOTAS_MAXIMAS = 12;
 
 interface RespuestaWebpay {
   url: string;   // URL del formulario Webpay
@@ -187,4 +197,29 @@ export async function confirmarPagoFlow(token: string): Promise<ResultadoCommitW
   });
   if (!res.ok) throw new Error('No se pudo confirmar el pago con Flow');
   return res.json() as Promise<ResultadoCommitWebpay>;
+}
+
+/**
+ * Reintenta el pago de un pedido ya creado (tras un rechazo), sin crear
+ * un pedido nuevo — evita dejar pedidos huérfanos duplicados en estado
+ * "pendiente_pago". Redirige a la misma pasarela que se eligió al crear
+ * el pedido.
+ */
+export async function reintentarPago(pedido: Pedido): Promise<void> {
+  if (pedido.metodoPago === 'webpay') {
+    const resp = await iniciarPagoWebpay(pedido.id);
+    redirigirAWebpay(resp);
+    return;
+  }
+  if (pedido.metodoPago === 'mercadopago') {
+    const url = await iniciarPagoMercadoPago(pedido.id, `Pedido ${pedido.id} — La Casa de la Motosierra`);
+    window.location.href = url;
+    return;
+  }
+  if (pedido.metodoPago === 'flow') {
+    const resp = await iniciarPagoFlow(pedido.id, pedido.emailCliente);
+    redirigirAFlow(resp);
+    return;
+  }
+  throw new Error('Este método de pago no admite reintento automático.');
 }

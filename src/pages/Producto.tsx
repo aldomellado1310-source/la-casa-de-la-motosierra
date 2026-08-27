@@ -9,6 +9,7 @@ import EstadoError from '../components/EstadoError';
 import GaleriaFotos from '../components/GaleriaFotos';
 import TablaVolumen from '../components/TablaVolumen';
 import { obtenerProducto, obtenerProductos, registrarAvisoStock } from '../services/productos';
+import { envioDesde } from '../services/envios';
 import TarjetaProducto from '../components/TarjetaProducto';
 import { useCarrito } from '../stores/useCarrito';
 import { useFavoritos } from '../stores/useFavoritos';
@@ -176,6 +177,9 @@ export default function Producto() {
               <p className="text-sm font-medium text-verde">Precio por volumen aplicado</p>
             )}
             <p className="text-xs text-gris-600">IVA incluido</p>
+            <p className="mt-1 text-xs text-gris-600">
+              Retiro gratis en Puerto Aysén, o envío a todo Chile desde {formatoCLP(envioDesde(cantidad))}
+            </p>
           </div>
 
           {/* Compra */}

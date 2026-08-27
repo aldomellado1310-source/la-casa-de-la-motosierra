@@ -75,7 +75,9 @@ export default function AdminPedidos() {
                     ))}
                   </ul>
                   <p className="mt-1 text-xs text-gris-600">
-                    Subtotal {formatoCLP(p.subtotal)} + envío {formatoCLP(p.costoEnvio)}
+                    Subtotal {formatoCLP(p.subtotal)}
+                    {p.descuento ? ` − descuento ${formatoCLP(p.descuento)} (${p.cuponCodigo})` : ''}
+                    {' '}+ envío {formatoCLP(p.costoEnvio)}
                   </p>
                 </div>
                 <div className="text-sm">

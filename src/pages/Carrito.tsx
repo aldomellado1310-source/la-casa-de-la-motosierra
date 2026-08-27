@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useCarrito } from '../stores/useCarrito';
 import { useAuth } from '../stores/useAuth';
 import { formatoCLP } from '../utils/precio';
+import { envioDesde } from '../services/envios';
 import { useSeo } from '../utils/seo';
 import { IconoCarrito, IconoDocumento } from '../components/Iconos';
 
@@ -14,7 +15,8 @@ export default function Carrito() {
   });
   const navigate = useNavigate();
   const { usuario } = useAuth();
-  const { items, cambiarCantidad, quitar, total } = useCarrito();
+  const { items, cambiarCantidad, quitar, total, unidades } = useCarrito();
+  const envioEstimado = envioDesde(unidades());
 
   if (items.length === 0) {
     return (
@@ -82,7 +84,10 @@ export default function Carrito() {
               <span>Subtotal (IVA incluido)</span>
               <span className="font-bold">{formatoCLP(total())}</span>
             </div>
-            <p className="mt-2 text-xs text-gris-600">El costo de envío se calcula y muestra en el siguiente paso, antes de pagar.</p>
+            <p className="mt-2 text-xs text-gris-600">
+              Retiro gratis en Puerto Aysén, o despacho a todo Chile desde {formatoCLP(envioEstimado)} según tu región
+              (el costo exacto se calcula y muestra en el siguiente paso, antes de pagar).
+            </p>
             <button onClick={() => navigate('/checkout')} className="btn-primario mt-4 w-full py-3">
               Ir a pagar
             </button>

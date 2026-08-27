@@ -125,6 +125,10 @@ export interface Pedido {
   items: ItemCarrito[];
   subtotal: number;
   costoEnvio: number;
+  /** Descuento aplicado en CLP (cupón), ya restado del total */
+  descuento?: number;
+  /** Código del cupón aplicado, si hubo */
+  cuponCodigo?: string;
   total: number;
   metodoPago: MetodoPago;
   metodoEnvio: MetodoEnvio;
@@ -137,6 +141,18 @@ export interface Pedido {
   referenciaPago?: string;
   /** true cuando el stock de los items ya fue descontado (evita doble descuento) */
   stockDescontado?: boolean;
+}
+
+/** Cupón de descuento (colección `cupones`, id = código en mayúsculas) */
+export interface Cupon {
+  codigo: string;
+  tipo: 'porcentaje' | 'monto';
+  /** % (1-100) si tipo=porcentaje, o monto CLP si tipo=monto */
+  valor: number;
+  activo: boolean;
+  descripcion?: string;
+  /** Fecha ISO de expiración; sin tope si no se define */
+  fechaExpiracion?: string;
 }
 
 export type EstadoCotizacion = 'enviada' | 'aprobada' | 'convertida' | 'vencida';
