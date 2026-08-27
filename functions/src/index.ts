@@ -29,12 +29,12 @@
 import { onRequest } from 'firebase-functions/v2/https';
 import { defineSecret } from 'firebase-functions/params';
 import * as admin from 'firebase-admin';
-import * as crypto from 'crypto';
 import PDFDocument from 'pdfkit';
 import {
   Options, IntegrationApiKeys, IntegrationCommerceCodes, Environment, WebpayPlus,
 } from 'transbank-sdk';
 import { MercadoPagoConfig, Payment, Preference } from 'mercadopago';
+import { evaluarAprobacionFlow, llamarFlow } from './flow';
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -78,23 +78,29 @@ async function totalDePedido(pedidoId: string): Promise<number | null> {
   return typeof total === 'number' && total > 0 ? Math.round(total) : null;
 }
 
-/** Descuenta el stock de los items de un pedido. Idempotente (flag stockDescontado). */
+/**
+ * Descuenta el stock de los items de un pedido. Idempotente: el flag
+ * stockDescontado se lee y escribe dentro de una transacción para que
+ * dos llamadas concurrentes (p. ej. el webhook de Flow y la confirmación
+ * del navegador llegando casi al mismo tiempo) no descuenten el stock
+ * dos veces.
+ */
 async function descontarStockPedido(pedidoRef: FirebaseFirestore.DocumentReference): Promise<void> {
-  const snap = await pedidoRef.get();
-  if (!snap.exists) return;
-  const pedido = snap.data() as {
-    items: { productoId: string; cantidad: number }[];
-    stockDescontado?: boolean;
-  };
-  if (pedido.stockDescontado) return;
-  const lote = db.batch();
-  for (const item of pedido.items) {
-    lote.update(db.collection('productos').doc(item.productoId), {
-      stock: admin.firestore.FieldValue.increment(-item.cantidad),
-    });
-  }
-  lote.update(pedidoRef, { stockDescontado: true });
-  await lote.commit();
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(pedidoRef);
+    if (!snap.exists) return;
+    const pedido = snap.data() as {
+      items: { productoId: string; cantidad: number }[];
+      stockDescontado?: boolean;
+    };
+    if (pedido.stockDescontado) return;
+    for (const item of pedido.items) {
+      tx.update(db.collection('productos').doc(item.productoId), {
+        stock: admin.firestore.FieldValue.increment(-item.cantidad),
+      });
+    }
+    tx.update(pedidoRef, { stockDescontado: true });
+  });
 }
 
 // ------------------------------------------------------------
@@ -273,19 +279,12 @@ export const mercadoPagoConfirmar = onRequest(
 );
 
 // ------------------------------------------------------------
-// Flow: helpers de firma y llamadas a la API
+// Flow: llamadas a la API (firma, timeout y reintentos en ./flow.ts)
 // (https://www.flow.cl/docs/api.html)
 // ------------------------------------------------------------
 
-/** Firma un conjunto de parámetros con HMAC-SHA256, como exige Flow */
-function firmarFlow(params: Record<string, string>, secretKey: string): string {
-  const claves = Object.keys(params).sort();
-  const texto = claves.map((k) => `${k}${params[k]}`).join('');
-  return crypto.createHmac('sha256', secretKey).update(texto).digest('hex');
-}
-
-/** POST/GET autenticado contra la API de Flow (agrega apiKey + firma) */
-async function llamarFlow(
+/** Llama a la API de Flow validando antes que las credenciales estén configuradas */
+async function llamarFlowApi(
   ruta: string,
   params: Record<string, string>,
   metodo: 'GET' | 'POST',
@@ -295,25 +294,7 @@ async function llamarFlow(
   if (!apiKey || !secretKey) {
     throw new Error('FLOW_API_KEY / FLOW_SECRET_KEY no configurados');
   }
-  const baseUrl = process.env.FLOW_SANDBOX === 'true'
-    ? 'https://sandbox.flow.cl/api'
-    : 'https://www.flow.cl/api';
-  const conApiKey = { ...params, apiKey };
-  const s = firmarFlow(conApiKey, secretKey);
-  const cuerpo = new URLSearchParams({ ...conApiKey, s });
-
-  const res = metodo === 'GET'
-    ? await fetch(`${baseUrl}${ruta}?${cuerpo.toString()}`)
-    : await fetch(`${baseUrl}${ruta}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: cuerpo.toString(),
-    });
-  const datos = (await res.json()) as Record<string, unknown>;
-  if (!res.ok) {
-    throw new Error(`Flow respondió ${res.status}: ${JSON.stringify(datos)}`);
-  }
-  return datos;
+  return llamarFlow(ruta, params, metodo, apiKey, secretKey);
 }
 
 /** URL pública de otra función v2 en la misma región/proyecto (para urlConfirmation) */
@@ -332,34 +313,44 @@ interface ResultadoCommitFlow {
 /**
  * Consulta el estado real de una orden de pago en Flow (getStatus) y
  * actualiza el pedido asociado. Se usa tanto desde el webhook de Flow
- * (urlConfirmation, servidor a servidor) como desde flowConfirmar
- * (llamado por el frontend al volver del formulario de pago) — el
- * resultado siempre se valida contra la API de Flow, nunca contra la
- * URL de retorno del navegador.
+ * (urlConfirmation, servidor a servidor — que Flow puede reintentar
+ * varias veces) como desde flowConfirmar (llamado por el frontend al
+ * volver del formulario de pago) — el resultado siempre se valida
+ * contra la API de Flow, nunca contra la URL de retorno del navegador.
+ *
+ * Idempotencia: la lectura + escritura del estado del pedido ocurre
+ * dentro de una transacción de Firestore, y si el pedido ya estaba
+ * "pagado" no se reprocesa. Así, si el webhook y flowConfirmar llegan
+ * casi al mismo tiempo (o Flow reintenta el webhook), el pedido nunca
+ * queda en un estado inconsistente ni se descuenta el stock dos veces.
  */
 async function verificarPagoFlow(token: string): Promise<ResultadoCommitFlow> {
-  const datos = await llamarFlow('/payment/getStatus', { token }, 'GET');
+  const datos = await llamarFlowApi('/payment/getStatus', { token }, 'GET');
   const status = Number(datos.status); // 1 pendiente, 2 pagada, 3 rechazada, 4 anulada
   const pedidoIdOrden = String(datos.commerceOrder ?? '');
   const montoFlow = Number(datos.amount ?? 0);
   const flowOrder = datos.flowOrder != null ? String(datos.flowOrder) : token;
-  let aprobado = status === 2;
+  let aprobado = false;
   let pedidoId = pedidoIdOrden;
 
   if (pedidoIdOrden) {
     const ref = db.collection('pedidos').doc(pedidoIdOrden);
-    const snap = await ref.get();
-    if (snap.exists) {
+    await db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      if (!snap.exists) return;
       pedidoId = snap.id;
-      // El monto pagado debe coincidir con el total del pedido
-      const totalPedido = (snap.data() as { total: number }).total;
-      aprobado = aprobado && Math.round(montoFlow) === Math.round(totalPedido);
-      await ref.update({
+      const pedido = snap.data() as { total: number; estado: string };
+      if (pedido.estado === 'pagado') {
+        aprobado = true; // ya procesado antes; no reescribir ni recontar
+        return;
+      }
+      aprobado = evaluarAprobacionFlow(status, montoFlow, pedido.total);
+      tx.update(ref, {
         estado: aprobado ? 'pagado' : 'pendiente_pago',
         referenciaPago: flowOrder,
       });
-      if (aprobado) await descontarStockPedido(ref);
-    }
+    });
+    if (aprobado) await descontarStockPedido(ref);
   }
   return { aprobado, pedidoId, codigoAutorizacion: flowOrder, monto: montoFlow };
 }
@@ -385,7 +376,7 @@ export const flowCrear = onRequest(
         res.status(404).json({ error: 'Pedido no encontrado o sin total válido' });
         return;
       }
-      const datos = await llamarFlow('/payment/create', {
+      const datos = await llamarFlowApi('/payment/create', {
         commerceOrder: pedidoId,
         subject: `Pedido ${pedidoId} - La Casa de la Motosierra`.slice(0, 45),
         currency: 'CLP',

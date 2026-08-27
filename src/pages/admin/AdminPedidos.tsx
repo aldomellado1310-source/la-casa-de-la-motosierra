@@ -2,12 +2,23 @@
 import { useEffect, useState } from 'react';
 import { ETIQUETAS_ESTADO_PEDIDO, actualizarEstadoPedido, descontarStockPedido, obtenerTodosLosPedidos } from '../../services/pedidos';
 import { formatoCLP } from '../../utils/precio';
-import type { EstadoPedido, Pedido } from '../../types';
+import type { EstadoPedido, MetodoPago, Pedido } from '../../types';
 
 const ESTADOS: EstadoPedido[] = [
   'pendiente_pago', 'pendiente_validacion', 'pagado', 'preparando',
   'despachado', 'listo_retiro', 'entregado', 'cancelado',
 ];
+
+const ETIQUETAS_METODO_PAGO: Record<MetodoPago, string> = {
+  webpay: 'Webpay Plus',
+  mercadopago: 'Mercado Pago',
+  flow: 'Flow',
+  transferencia: 'Transferencia bancaria',
+};
+
+/** Panel de comercio de Flow: no hay un deep-link fiable a una orden puntual, así que
+ *  se enlaza al panel general y el admin busca la orden con la referencia mostrada. */
+const URL_PANEL_FLOW = 'https://www.flow.cl/app/';
 
 export default function AdminPedidos() {
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
@@ -73,7 +84,18 @@ export default function AdminPedidos() {
                   {p.direccion && (
                     <p>Dirección: {p.direccion.calle} {p.direccion.numero}, {p.direccion.comuna} ({p.direccion.region})</p>
                   )}
-                  <p>Pago: <strong>{p.metodoPago}</strong>{p.referenciaPago ? ` · ref ${p.referenciaPago}` : ''}</p>
+                  <p>
+                    Pago: <strong>{ETIQUETAS_METODO_PAGO[p.metodoPago]}</strong>
+                    {p.referenciaPago ? ` · ref ${p.referenciaPago}` : ''}
+                    {p.metodoPago === 'flow' && p.referenciaPago && (
+                      <>
+                        {' · '}
+                        <a href={URL_PANEL_FLOW} target="_blank" rel="noreferrer" className="font-semibold text-verde hover:underline">
+                          Buscar en panel Flow →
+                        </a>
+                      </>
+                    )}
+                  </p>
                   {p.comprobanteUrl && (
                     <a href={p.comprobanteUrl} target="_blank" rel="noreferrer" className="font-semibold text-verde hover:underline">
                       Ver comprobante de transferencia →

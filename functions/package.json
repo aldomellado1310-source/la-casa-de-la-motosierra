@@ -1,6 +1,6 @@
 {
   "name": "functions",
-  "description": "Cloud Functions — pagos (Webpay/Mercado Pago) y PDF de cotizaciones",
+  "description": "Cloud Functions — pagos (Webpay/Mercado Pago/Flow) y PDF de cotizaciones",
   "engines": {
     "node": "20"
   },
@@ -8,7 +8,9 @@
   "scripts": {
     "build": "tsc",
     "serve": "npm run build && firebase emulators:start --only functions",
-    "deploy": "firebase deploy --only functions"
+    "deploy": "firebase deploy --only functions",
+    "pretest": "npm run build",
+    "test": "node --test lib/*.test.js"
   },
   "dependencies": {
     "firebase-admin": "^12.7.0",

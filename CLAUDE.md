@@ -18,6 +18,9 @@ npm run preview   # sirve dist/ (puerto 4173)
 npm run seed      # puebla Firestore (requiere serviceAccountKey.json)
 ```
 
+En `functions/`: `npm run build` (tsc) y `npm test` (test runner nativo de Node,
+`node --test`, sobre la lógica pura de las pasarelas — hoy `flow.ts`/`flow.test.ts`).
+
 ## Convenciones
 
 - **Todo en español**: comentarios, nombres de variables/funciones (`obtenerProductos`,
