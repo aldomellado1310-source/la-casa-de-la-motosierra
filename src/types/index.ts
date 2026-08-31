@@ -12,6 +12,15 @@ export interface TramoPrecio {
   precioUnitario: number;
 }
 
+/**
+ * Compatibilidad de un repuesto con una marca de máquina y sus modelos.
+ * `modelos` vacío = sirve para toda la marca (consumible universal).
+ */
+export interface Compatibilidad {
+  marca: string;
+  modelos: string[];
+}
+
 /** Producto del catálogo (colección `productos`) */
 export interface Producto {
   id: string;
@@ -28,10 +37,8 @@ export interface Producto {
   stock: number;
   /** URLs de fotos (Firebase Storage o placeholder) */
   fotos: string[];
-  /** Marcas de máquina compatibles (ej: Stihl, Husqvarna) */
-  marcasCompatibles: string[];
-  /** Modelos compatibles (ej: MS 250, 236) */
-  modelosCompatibles: string[];
+  /** Compatibilidad por marca de máquina (reemplaza los dos arrays planos de marca y modelo) */
+  compatibilidades: Compatibilidad[];
   /** Tramos de descuento por cantidad */
   preciosPorVolumen: TramoPrecio[];
   destacado: boolean;

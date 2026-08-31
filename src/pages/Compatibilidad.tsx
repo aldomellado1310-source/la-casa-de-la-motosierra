@@ -31,7 +31,7 @@ export default function Compatibilidad() {
 
   // Marcas con su cantidad de repuestos, para la exploración directa
   const marcas = [...productos.reduce((mapa, p) => {
-    p.marcasCompatibles.forEach((m) => mapa.set(m, (mapa.get(m) ?? 0) + 1));
+    p.compatibilidades.forEach((c) => mapa.set(c.marca, (mapa.get(c.marca) ?? 0) + 1));
     return mapa;
   }, new Map<string, number>())].sort((a, b) => b[1] - a[1]);
 

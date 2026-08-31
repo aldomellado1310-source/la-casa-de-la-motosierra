@@ -19,7 +19,11 @@ export async function obtenerProductos(incluirInactivos = false): Promise<Produc
   }
   if (!cacheProductos) {
     const snap = await getDocs(collection(db!, 'productos'));
-    cacheProductos = snap.docs.map((d) => ({ ...(d.data() as Producto), id: d.id }));
+    cacheProductos = snap.docs.map((d) => {
+      const datos = d.data() as Producto;
+      // Docs antiguos podrían no traer `compatibilidades`
+      return { ...datos, id: d.id, compatibilidades: datos.compatibilidades ?? [] };
+    });
   }
   return cacheProductos.filter((p) => incluirInactivos || p.activo);
 }
@@ -47,7 +51,7 @@ export async function obtenerCategorias(): Promise<Categoria[]> {
 export async function obtenerMarcasCompatibles(): Promise<string[]> {
   const productos = await obtenerProductos();
   const marcas = new Set<string>();
-  productos.forEach((p) => p.marcasCompatibles.forEach((m) => marcas.add(m)));
+  productos.forEach((p) => p.compatibilidades.forEach((c) => marcas.add(c.marca)));
   return [...marcas].sort();
 }
 
@@ -55,23 +59,26 @@ export async function obtenerMarcasCompatibles(): Promise<string[]> {
 export async function obtenerModelosPorMarca(marca: string): Promise<string[]> {
   const productos = await obtenerProductos();
   const modelos = new Set<string>();
-  productos
-    .filter((p) => p.marcasCompatibles.includes(marca))
-    .forEach((p) => p.modelosCompatibles.forEach((m) => modelos.add(m)));
+  productos.forEach((p) =>
+    p.compatibilidades
+      .filter((c) => c.marca === marca)
+      .forEach((c) => c.modelos.forEach((m) => modelos.add(m))),
+  );
   return [...modelos].sort();
 }
 
 /**
  * Buscador por compatibilidad de máquina (filtro estructurado).
- * Un producto sin modelos declarados pero con la marca compatible
- * (consumibles universales) también se incluye.
+ * Un producto compatible con la marca pero sin modelos declarados para ella
+ * (consumible universal de la marca) también se incluye.
  */
 export async function buscarPorCompatibilidad(marca: string, modelo?: string): Promise<Producto[]> {
   const productos = await obtenerProductos();
   return productos.filter((p) => {
-    if (!p.marcasCompatibles.includes(marca)) return false;
+    const c = p.compatibilidades.find((x) => x.marca === marca);
+    if (!c) return false;
     if (!modelo) return true;
-    return p.modelosCompatibles.length === 0 || p.modelosCompatibles.includes(modelo);
+    return c.modelos.length === 0 || c.modelos.includes(modelo);
   });
 }
 

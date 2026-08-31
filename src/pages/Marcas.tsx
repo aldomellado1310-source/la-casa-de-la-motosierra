@@ -27,11 +27,11 @@ export default function Marcas() {
       .then((productos: Producto[]) => {
         const mapa = new Map<string, { productos: number; modelos: Set<string> }>();
         for (const p of productos) {
-          for (const m of p.marcasCompatibles) {
-            const datos = mapa.get(m) ?? { productos: 0, modelos: new Set<string>() };
+          for (const c of p.compatibilidades) {
+            const datos = mapa.get(c.marca) ?? { productos: 0, modelos: new Set<string>() };
             datos.productos++;
-            p.modelosCompatibles.forEach((mod) => datos.modelos.add(mod));
-            mapa.set(m, datos);
+            c.modelos.forEach((mod) => datos.modelos.add(mod));
+            mapa.set(c.marca, datos);
           }
         }
         setMarcas(

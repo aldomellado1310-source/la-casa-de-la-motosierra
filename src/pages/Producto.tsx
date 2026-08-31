@@ -13,6 +13,7 @@ import TarjetaProducto from '../components/TarjetaProducto';
 import { useCarrito } from '../stores/useCarrito';
 import { useFavoritos } from '../stores/useFavoritos';
 import { IconoCorazon } from '../components/Iconos';
+import { WHATSAPP_NUMERO } from '../config/firebase';
 import { enOferta, estadoStock, formatoCLP, porcentajeOferta, precioPorCantidad, precioVigente } from '../utils/precio';
 import { jsonLdProducto, useSeo } from '../utils/seo';
 import type { Producto as TipoProducto } from '../types';
@@ -71,8 +72,12 @@ export default function Producto() {
       const todos = await obtenerProductos();
       const puntaje = (x: TipoProducto): number => {
         if (x.id === p.id) return -1;
-        const compartenModelo = x.modelosCompatibles.some((m) => p.modelosCompatibles.includes(m));
-        const compartenMarca = x.marcasCompatibles.some((m) => p.marcasCompatibles.includes(m));
+        const marcasX = x.compatibilidades.map((c) => c.marca);
+        const marcasP = p.compatibilidades.map((c) => c.marca);
+        const modelosX = x.compatibilidades.flatMap((c) => c.modelos);
+        const modelosP = p.compatibilidades.flatMap((c) => c.modelos);
+        const compartenModelo = modelosX.some((m) => modelosP.includes(m));
+        const compartenMarca = marcasX.some((m) => marcasP.includes(m));
         const mismaCategoria = x.categoria === p.categoria;
         if (!compartenMarca && !mismaCategoria) return -1;
         let s = 0;
@@ -251,35 +256,52 @@ export default function Producto() {
           )}
 
           {/* Compatibilidad */}
-          {(producto.marcasCompatibles.length > 0 || producto.modelosCompatibles.length > 0) && (
+          {producto.compatibilidades.length > 0 && (
             <div className="mt-6">
               <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-verde">Compatible con</h2>
-              <div className="flex flex-wrap gap-1.5">
-                {producto.marcasCompatibles.map((m) => (
-                  <Link
-                    key={m}
-                    to={`/tienda?marca=${encodeURIComponent(m)}`}
-                    className="rounded-full bg-verde/10 px-3 py-1 text-xs font-semibold text-verde hover:bg-verde/20"
-                  >
-                    {m}
-                  </Link>
-                ))}
-                {producto.modelosCompatibles.map((m) => (
-                  <span key={m} className="rounded-full border border-borde px-3 py-1 text-xs text-grafito/80">
-                    {m}
-                  </span>
+              <div className="space-y-2">
+                {producto.compatibilidades.map((c) => (
+                  <div key={c.marca} className="flex flex-wrap items-center gap-1.5">
+                    <Link
+                      to={`/tienda?marca=${encodeURIComponent(c.marca)}`}
+                      className="rounded-full bg-verde/10 px-3 py-1 text-xs font-semibold text-verde hover:bg-verde/20"
+                    >
+                      {c.marca}
+                    </Link>
+                    {c.modelos.length > 0 ? (
+                      c.modelos.map((m) => (
+                        <span key={m} className="rounded-full border border-borde px-3 py-1 text-xs text-grafito/80">
+                          {m}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="text-xs text-gris-600">Todos los modelos</span>
+                    )}
+                  </div>
                 ))}
               </div>
-              {producto.modelosCompatibles.length === 0 && producto.marcasCompatibles.length > 0 && (
-                <p className="mt-2 text-xs text-gris-600">Producto universal: sirve para todos los modelos de estas marcas.</p>
-              )}
             </div>
           )}
 
           {/* Descripción */}
           <div className="mt-6">
             <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-verde">Descripción</h2>
-            <p className="text-sm leading-relaxed text-grafito/90">{producto.descripcion}</p>
+            {producto.descripcion.trim() ? (
+              <p className="text-sm leading-relaxed text-grafito/90">{producto.descripcion}</p>
+            ) : (
+              <p className="text-sm leading-relaxed text-gris-600">
+                Sin descripción detallada todavía.{' '}
+                <a
+                  href={`https://wa.me/${WHATSAPP_NUMERO}?text=${encodeURIComponent(`Hola, quiero consultar por el repuesto ${producto.sku} (${producto.nombre})`)}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="font-semibold text-verde hover:underline"
+                >
+                  Escríbenos por WhatsApp
+                </a>{' '}
+                para confirmar compatibilidad y disponibilidad.
+              </p>
+            )}
           </div>
         </div>
       </div>

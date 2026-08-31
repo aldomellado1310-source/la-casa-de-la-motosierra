@@ -10,7 +10,7 @@ import {
 } from '../../services/productos';
 import { formatoCLP } from '../../utils/precio';
 import BadgeStock from '../../components/BadgeStock';
-import type { Categoria, Producto, TramoPrecio } from '../../types';
+import type { Categoria, Compatibilidad, Producto, TramoPrecio } from '../../types';
 
 /**
  * Precio editable directo en la tabla: clic → input →
@@ -75,9 +75,35 @@ function productoVacio(): Producto {
     sku: '', nombre: '', descripcion: '',
     categoria: 'repuestos-varios', subcategoria: '',
     precio: 0, stock: 0, fotos: [],
-    marcasCompatibles: [], modelosCompatibles: [],
+    compatibilidades: [],
     preciosPorVolumen: [], destacado: false, activo: true,
   };
+}
+
+/**
+ * Formato de texto para compatibilidades en CSV / campo libre:
+ *   "Stihl:MS 250;MS 260|Husqvarna:445|Genérica/China:"
+ * `|` separa marcas · `:` separa marca de sus modelos · `;` separa modelos.
+ */
+function compatibilidadesATexto(compat: Compatibilidad[]): string {
+  return compat.map((c) => `${c.marca}:${c.modelos.join(';')}`).join('|');
+}
+
+function textoACompatibilidades(texto: string): Compatibilidad[] {
+  return texto
+    .split('|')
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .map((entrada) => {
+      const idx = entrada.indexOf(':');
+      const marca = (idx >= 0 ? entrada.slice(0, idx) : entrada).trim();
+      const modelos = (idx >= 0 ? entrada.slice(idx + 1) : '')
+        .split(';')
+        .map((m) => m.trim())
+        .filter(Boolean);
+      return { marca, modelos };
+    })
+    .filter((c) => c.marca);
 }
 
 export default function AdminProductos() {
@@ -146,8 +172,9 @@ export default function AdminProductos() {
 
   /**
    * Importación masiva por CSV. Columnas esperadas (con encabezado):
-   * sku,nombre,descripcion,categoria,subcategoria,precio,stock,marcasCompatibles,modelosCompatibles
-   * Las listas van separadas por "|". Ej: Stihl|Husqvarna
+   * sku,nombre,descripcion,categoria,subcategoria,precio,precioOferta,stock,compatibilidades
+   * `compatibilidades`: "Stihl:MS 250;MS 260|Husqvarna:445" (| marcas, : modelos, ; entre modelos).
+   * Retrocompat: si solo viene `marcascompatibles` (listas con "|"), se toma como marcas sin modelos.
    */
   const importarCsv = async (archivo: File | null) => {
     if (!archivo) return;
@@ -177,8 +204,11 @@ export default function AdminProductos() {
         precioOferta: Number.isNaN(precioOferta) || precioOferta <= 0 ? undefined : precioOferta,
         stock: parseInt(celdas[idx('stock')] ?? '0', 10) || 0,
         fotos: [`https://placehold.co/600x600/FFFFFF/9AA09B/png?text=${encodeURIComponent(sku)}`],
-        marcasCompatibles: (celdas[idx('marcascompatibles')] ?? '').split('|').map((s) => s.trim()).filter(Boolean),
-        modelosCompatibles: (celdas[idx('modeloscompatibles')] ?? '').split('|').map((s) => s.trim()).filter(Boolean),
+        compatibilidades: celdas[idx('compatibilidades')]
+          ? textoACompatibilidades(celdas[idx('compatibilidades')])
+          : (celdas[idx('marcascompatibles')] ?? '')
+              .split('|').map((s) => s.trim()).filter(Boolean)
+              .map((marca) => ({ marca, modelos: [] })),
         preciosPorVolumen: [{ desde: 1, hasta: null, precioUnitario: precio }],
         destacado: false,
         activo: true,
@@ -194,12 +224,12 @@ export default function AdminProductos() {
   /** Exporta el inventario completo a CSV (mismas columnas que la importación) */
   const exportarCsv = () => {
     const esc = (s: string) => `"${s.replace(/"/g, '""')}"`;
-    const encabezado = 'sku,nombre,descripcion,categoria,subcategoria,precio,precioOferta,stock,marcasCompatibles,modelosCompatibles';
+    const encabezado = 'sku,nombre,descripcion,categoria,subcategoria,precio,precioOferta,stock,compatibilidades';
     const filas = productos.map((p) =>
       [
         esc(p.sku), esc(p.nombre), esc(p.descripcion), esc(p.categoria), esc(p.subcategoria),
         String(p.precio), p.precioOferta ? String(p.precioOferta) : '',
-        String(p.stock), esc(p.marcasCompatibles.join('|')), esc(p.modelosCompatibles.join('|')),
+        String(p.stock), esc(compatibilidadesATexto(p.compatibilidades)),
       ].join(','),
     );
     // BOM para que Excel abra las tildes correctamente
@@ -248,7 +278,7 @@ export default function AdminProductos() {
         </label>
         <button onClick={exportarCsv} className="btn-secundario">Exportar CSV</button>
         <span className="text-xs text-gris-600">
-          CSV: sku,nombre,descripcion,categoria,subcategoria,precio,precioOferta,stock,marcasCompatibles,modelosCompatibles (listas con “|”)
+          CSV: sku,nombre,descripcion,categoria,subcategoria,precio,precioOferta,stock,compatibilidades — compatibilidades como “Stihl:MS 250;MS 260|Husqvarna:445”
         </span>
       </div>
 
@@ -310,25 +340,52 @@ export default function AdminProductos() {
               <label className="etiqueta" htmlFor="prod-descripcion">Descripción</label>
               <textarea id="prod-descripcion" rows={2} value={editando.descripcion} onChange={(e) => setEditando({ ...editando, descripcion: e.target.value })} className="campo" />
             </div>
-            <div className="sm:col-span-2">
-              <label className="etiqueta" htmlFor="prod-marcas">Marcas compatibles (separadas por coma)</label>
-              <input
-                id="prod-marcas"
-                value={editando.marcasCompatibles.join(', ')}
-                onChange={(e) => setEditando({ ...editando, marcasCompatibles: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) })}
-                placeholder="Stihl, Husqvarna"
-                className="campo"
-              />
-            </div>
-            <div className="sm:col-span-2">
-              <label className="etiqueta" htmlFor="prod-modelos">Modelos compatibles (separados por coma)</label>
-              <input
-                id="prod-modelos"
-                value={editando.modelosCompatibles.join(', ')}
-                onChange={(e) => setEditando({ ...editando, modelosCompatibles: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) })}
-                placeholder="MS 250, 445"
-                className="campo"
-              />
+            <div className="sm:col-span-2 lg:col-span-4">
+              <div className="mb-1 flex items-center gap-3">
+                <label className="etiqueta mb-0">Compatibilidad por marca</label>
+                <button
+                  type="button"
+                  onClick={() => setEditando({
+                    ...editando,
+                    compatibilidades: [...editando.compatibilidades, { marca: '', modelos: [] }],
+                  })}
+                  className="text-xs font-semibold text-verde hover:underline"
+                >
+                  + Agregar marca
+                </button>
+              </div>
+              {editando.compatibilidades.map((c, i) => (
+                <div key={i} className="mb-1 flex flex-wrap items-center gap-2 text-sm">
+                  <input
+                    value={c.marca}
+                    onChange={(e) => {
+                      const compat = [...editando.compatibilidades];
+                      compat[i] = { ...compat[i], marca: e.target.value };
+                      setEditando({ ...editando, compatibilidades: compat });
+                    }}
+                    placeholder="Marca (ej: Stihl)"
+                    className="campo w-40"
+                    aria-label={`Marca compatible ${i + 1}`}
+                  />
+                  <input
+                    value={c.modelos.join(', ')}
+                    onChange={(e) => {
+                      const compat = [...editando.compatibilidades];
+                      compat[i] = { ...compat[i], modelos: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) };
+                      setEditando({ ...editando, compatibilidades: compat });
+                    }}
+                    placeholder="Modelos separados por coma (vacío = toda la marca)"
+                    className="campo flex-1"
+                    aria-label={`Modelos compatibles de ${c.marca || `marca ${i + 1}`}`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setEditando({ ...editando, compatibilidades: editando.compatibilidades.filter((_, j) => j !== i) })}
+                    className="text-red-600"
+                    aria-label="Quitar marca compatible"
+                  >✕</button>
+                </div>
+              ))}
             </div>
           </div>
 

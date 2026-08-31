@@ -56,10 +56,11 @@ export default function Tienda() {
     if (categoria) lista = lista.filter((p) => p.categoria === categoria);
     if (marca) {
       lista = lista.filter((p) => {
-        if (!p.marcasCompatibles.includes(marca)) return false;
+        const c = p.compatibilidades.find((x) => x.marca === marca);
+        if (!c) return false;
         if (!modelo) return true;
-        // Consumibles sin modelos declarados sirven para toda la marca
-        return p.modelosCompatibles.length === 0 || p.modelosCompatibles.includes(modelo);
+        // Sin modelos declarados para esta marca = sirve para toda la marca
+        return c.modelos.length === 0 || c.modelos.includes(modelo);
       });
     }
     if (q) {

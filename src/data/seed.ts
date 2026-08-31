@@ -21,7 +21,7 @@ export const CATEGORIAS_SEED: Categoria[] = [
 ];
 
 /** Marcas de máquinas soportadas por el buscador de compatibilidad */
-export const MARCAS_MAQUINA = ['Stihl', 'Husqvarna', 'Honda', 'Toyama', 'Echo', 'Genérica/China'] as const;
+export const MARCAS_MAQUINA = ['Stihl', 'Husqvarna', 'Honda', 'Toyama', 'Echo', 'Castor', 'Genérica/China'] as const;
 
 export const PRODUCTOS_SEED: Producto[] = [
   {
@@ -32,8 +32,11 @@ export const PRODUCTOS_SEED: Producto[] = [
     categoria: 'espadas-cadenas', subcategoria: 'Cadenas',
     precio: 18990, stock: 24,
     fotos: [foto('Cadena .325 64E'), foto('Cadena detalle')],
-    marcasCompatibles: ['Stihl', 'Husqvarna', 'Genérica/China'],
-    modelosCompatibles: ['MS 250', 'MS 251', '450', '445', 'G5800'],
+    compatibilidades: [
+      { marca: 'Stihl', modelos: ['MS 250', 'MS 251'] },
+      { marca: 'Husqvarna', modelos: ['450', '445'] },
+      { marca: 'Genérica/China', modelos: ['G5800'] },
+    ],
     preciosPorVolumen: [
       { desde: 1, hasta: 9, precioUnitario: 18990 },
       { desde: 10, hasta: 39, precioUnitario: 16490 },
@@ -49,8 +52,11 @@ export const PRODUCTOS_SEED: Producto[] = [
     categoria: 'espadas-cadenas', subcategoria: 'Espadas',
     precio: 34990, stock: 11,
     fotos: [foto('Espada 20 pulgadas')],
-    marcasCompatibles: ['Stihl', 'Husqvarna', 'Toyama'],
-    modelosCompatibles: ['MS 250', 'MS 260', '450', '455 Rancher', 'TCS53X'],
+    compatibilidades: [
+      { marca: 'Stihl', modelos: ['MS 250', 'MS 260'] },
+      { marca: 'Husqvarna', modelos: ['450', '455 Rancher'] },
+      { marca: 'Toyama', modelos: ['TCS53X'] },
+    ],
     preciosPorVolumen: [
       { desde: 1, hasta: 9, precioUnitario: 34990 },
       { desde: 10, hasta: null, precioUnitario: 30990 },
@@ -65,8 +71,13 @@ export const PRODUCTOS_SEED: Producto[] = [
     categoria: 'filtros-bujias', subcategoria: 'Bujías',
     precio: 4990, stock: 86,
     fotos: [foto('Bujia NGK BPMR7A')],
-    marcasCompatibles: ['Stihl', 'Husqvarna', 'Echo', 'Toyama', 'Genérica/China'],
-    modelosCompatibles: ['MS 170', 'MS 180', 'MS 250', 'MS 361', '236', '445', '450', 'CS-590', 'G4500', 'G5800'],
+    compatibilidades: [
+      { marca: 'Stihl', modelos: ['MS 170', 'MS 180', 'MS 250', 'MS 361'] },
+      { marca: 'Husqvarna', modelos: ['236', '445', '450'] },
+      { marca: 'Echo', modelos: ['CS-590'] },
+      { marca: 'Toyama', modelos: [] },
+      { marca: 'Genérica/China', modelos: ['G4500', 'G5800'] },
+    ],
     preciosPorVolumen: [
       { desde: 1, hasta: 9, precioUnitario: 4990 },
       { desde: 10, hasta: 39, precioUnitario: 4290 },
@@ -82,8 +93,9 @@ export const PRODUCTOS_SEED: Producto[] = [
     categoria: 'filtros-bujias', subcategoria: 'Filtros de aire',
     precio: 6990, stock: 32,
     fotos: [foto('Filtro aire MS250')],
-    marcasCompatibles: ['Stihl'],
-    modelosCompatibles: ['MS 210', 'MS 230', 'MS 250'],
+    compatibilidades: [
+      { marca: 'Stihl', modelos: ['MS 210', 'MS 230', 'MS 250'] },
+    ],
     preciosPorVolumen: [
       { desde: 1, hasta: 9, precioUnitario: 6990 },
       { desde: 10, hasta: null, precioUnitario: 5990 },
@@ -98,8 +110,12 @@ export const PRODUCTOS_SEED: Producto[] = [
     categoria: 'carburacion-arranque', subcategoria: 'Kits de reparación',
     precio: 8990, stock: 15,
     fotos: [foto('Kit carburador Walbro')],
-    marcasCompatibles: ['Stihl', 'Husqvarna', 'Echo', 'Genérica/China'],
-    modelosCompatibles: ['MS 170', 'MS 180', '236', '240', 'CS-310', 'G3800'],
+    compatibilidades: [
+      { marca: 'Stihl', modelos: ['MS 170', 'MS 180'] },
+      { marca: 'Husqvarna', modelos: ['236', '240'] },
+      { marca: 'Echo', modelos: ['CS-310'] },
+      { marca: 'Genérica/China', modelos: ['G3800'] },
+    ],
     preciosPorVolumen: [
       { desde: 1, hasta: 9, precioUnitario: 8990 },
       { desde: 10, hasta: null, precioUnitario: 7690 },
@@ -114,8 +130,9 @@ export const PRODUCTOS_SEED: Producto[] = [
     categoria: 'repuestos-varios', subcategoria: 'Pistones y cilindros',
     precio: 24990, stock: 6,
     fotos: [foto('Piston 39mm Husqvarna'), foto('Kit piston detalle')],
-    marcasCompatibles: ['Husqvarna'],
-    modelosCompatibles: ['236', '240'],
+    compatibilidades: [
+      { marca: 'Husqvarna', modelos: ['236', '240'] },
+    ],
     preciosPorVolumen: [
       { desde: 1, hasta: 9, precioUnitario: 24990 },
       { desde: 10, hasta: null, precioUnitario: 21990 },
@@ -130,8 +147,14 @@ export const PRODUCTOS_SEED: Producto[] = [
     categoria: 'aceites-lubricantes', subcategoria: 'Aceite de mezcla 2T',
     precio: 9990, precioOferta: 8490, stock: 48,
     fotos: ['/productos/aceite-2t.webp'],
-    marcasCompatibles: ['Stihl', 'Husqvarna', 'Honda', 'Echo', 'Toyama', 'Genérica/China'],
-    modelosCompatibles: [],
+    compatibilidades: [
+      { marca: 'Stihl', modelos: [] },
+      { marca: 'Husqvarna', modelos: [] },
+      { marca: 'Honda', modelos: [] },
+      { marca: 'Echo', modelos: [] },
+      { marca: 'Toyama', modelos: [] },
+      { marca: 'Genérica/China', modelos: [] },
+    ],
     preciosPorVolumen: [
       { desde: 1, hasta: 9, precioUnitario: 9990 },
       { desde: 10, hasta: 39, precioUnitario: 8790 },
@@ -147,8 +170,14 @@ export const PRODUCTOS_SEED: Producto[] = [
     categoria: 'aceites-lubricantes', subcategoria: 'Aceite de cadena',
     precio: 15990, stock: 20,
     fotos: [foto('Aceite cadena 5L')],
-    marcasCompatibles: ['Stihl', 'Husqvarna', 'Honda', 'Echo', 'Toyama', 'Genérica/China'],
-    modelosCompatibles: [],
+    compatibilidades: [
+      { marca: 'Stihl', modelos: [] },
+      { marca: 'Husqvarna', modelos: [] },
+      { marca: 'Honda', modelos: [] },
+      { marca: 'Echo', modelos: [] },
+      { marca: 'Toyama', modelos: [] },
+      { marca: 'Genérica/China', modelos: [] },
+    ],
     preciosPorVolumen: [
       { desde: 1, hasta: 9, precioUnitario: 15990 },
       { desde: 10, hasta: null, precioUnitario: 13990 },
@@ -163,8 +192,13 @@ export const PRODUCTOS_SEED: Producto[] = [
     categoria: 'desbrozadoras', subcategoria: 'Accesorios de corte',
     precio: 12990, precioOferta: 10990, stock: 18,
     fotos: ['/productos/cabezal-nylon.webp'],
-    marcasCompatibles: ['Stihl', 'Husqvarna', 'Honda', 'Toyama', 'Genérica/China'],
-    modelosCompatibles: ['FS 55', 'FS 120', '143R-II', 'UMK435', 'RT43L'],
+    compatibilidades: [
+      { marca: 'Stihl', modelos: ['FS 55', 'FS 120'] },
+      { marca: 'Husqvarna', modelos: ['143R-II'] },
+      { marca: 'Honda', modelos: ['UMK435'] },
+      { marca: 'Toyama', modelos: ['RT43L'] },
+      { marca: 'Genérica/China', modelos: [] },
+    ],
     preciosPorVolumen: [
       { desde: 1, hasta: 9, precioUnitario: 12990 },
       { desde: 10, hasta: null, precioUnitario: 10990 },
@@ -179,8 +213,13 @@ export const PRODUCTOS_SEED: Producto[] = [
     categoria: 'desbrozadoras', subcategoria: 'Accesorios de corte',
     precio: 19990, stock: 9,
     fotos: [foto('Nylon 2.4mm 100m')],
-    marcasCompatibles: ['Stihl', 'Husqvarna', 'Honda', 'Toyama', 'Genérica/China'],
-    modelosCompatibles: [],
+    compatibilidades: [
+      { marca: 'Stihl', modelos: [] },
+      { marca: 'Husqvarna', modelos: [] },
+      { marca: 'Honda', modelos: [] },
+      { marca: 'Toyama', modelos: [] },
+      { marca: 'Genérica/China', modelos: [] },
+    ],
     preciosPorVolumen: [
       { desde: 1, hasta: 4, precioUnitario: 19990 },
       { desde: 5, hasta: null, precioUnitario: 17490 },
@@ -195,8 +234,9 @@ export const PRODUCTOS_SEED: Producto[] = [
     categoria: 'motosierras', subcategoria: 'Domésticas',
     precio: 249990, stock: 4,
     fotos: ['/productos/motosierra-husqvarna.webp', '/productos/motosierra-uso.webp'],
-    marcasCompatibles: ['Husqvarna'],
-    modelosCompatibles: ['135'],
+    compatibilidades: [
+      { marca: 'Husqvarna', modelos: ['135'] },
+    ],
     preciosPorVolumen: [
       { desde: 1, hasta: 4, precioUnitario: 189990 },
       { desde: 5, hasta: null, precioUnitario: 174990 },
@@ -211,8 +251,9 @@ export const PRODUCTOS_SEED: Producto[] = [
     categoria: 'carburacion-arranque', subcategoria: 'Arranque',
     precio: 16990, stock: 0, bajoPedido: true,
     fotos: [foto('Arranque MS180')],
-    marcasCompatibles: ['Stihl'],
-    modelosCompatibles: ['MS 170', 'MS 180'],
+    compatibilidades: [
+      { marca: 'Stihl', modelos: ['MS 170', 'MS 180'] },
+    ],
     preciosPorVolumen: [
       { desde: 1, hasta: 9, precioUnitario: 16990 },
       { desde: 10, hasta: null, precioUnitario: 14990 },
@@ -227,8 +268,13 @@ export const PRODUCTOS_SEED: Producto[] = [
     categoria: 'herramientas-seguridad', subcategoria: 'Afilado',
     precio: 10990, stock: 27,
     fotos: ['/productos/afilado.webp'],
-    marcasCompatibles: ['Stihl', 'Husqvarna', 'Echo', 'Toyama', 'Genérica/China'],
-    modelosCompatibles: [],
+    compatibilidades: [
+      { marca: 'Stihl', modelos: [] },
+      { marca: 'Husqvarna', modelos: [] },
+      { marca: 'Echo', modelos: [] },
+      { marca: 'Toyama', modelos: [] },
+      { marca: 'Genérica/China', modelos: [] },
+    ],
     preciosPorVolumen: [
       { desde: 1, hasta: 9, precioUnitario: 10990 },
       { desde: 10, hasta: null, precioUnitario: 9490 },
@@ -243,8 +289,7 @@ export const PRODUCTOS_SEED: Producto[] = [
     categoria: 'herramientas-seguridad', subcategoria: 'EPP',
     precio: 29990, precioOferta: 25990, stock: 13,
     fotos: [foto('Casco forestal')],
-    marcasCompatibles: [],
-    modelosCompatibles: [],
+    compatibilidades: [],
     preciosPorVolumen: [
       { desde: 1, hasta: 9, precioUnitario: 29990 },
       { desde: 10, hasta: null, precioUnitario: 26490 },
@@ -259,8 +304,9 @@ export const PRODUCTOS_SEED: Producto[] = [
     categoria: 'repuestos-varios', subcategoria: 'Embragues',
     precio: 21990, stock: 3,
     fotos: ['/productos/embrague.webp'],
-    marcasCompatibles: ['Husqvarna'],
-    modelosCompatibles: ['445', '450'],
+    compatibilidades: [
+      { marca: 'Husqvarna', modelos: ['445', '450'] },
+    ],
     preciosPorVolumen: [
       { desde: 1, hasta: 9, precioUnitario: 21990 },
       { desde: 10, hasta: null, precioUnitario: 19490 },
@@ -275,8 +321,13 @@ export const PRODUCTOS_SEED: Producto[] = [
     categoria: 'filtros-bujias', subcategoria: 'Filtros de combustible',
     precio: 2990, stock: 120,
     fotos: [foto('Filtro combustible')],
-    marcasCompatibles: ['Stihl', 'Husqvarna', 'Echo', 'Toyama', 'Genérica/China'],
-    modelosCompatibles: ['MS 170', 'MS 180', 'MS 250', '236', '445', 'G4500'],
+    compatibilidades: [
+      { marca: 'Stihl', modelos: ['MS 170', 'MS 180', 'MS 250'] },
+      { marca: 'Husqvarna', modelos: ['236', '445'] },
+      { marca: 'Echo', modelos: [] },
+      { marca: 'Toyama', modelos: [] },
+      { marca: 'Genérica/China', modelos: ['G4500'] },
+    ],
     preciosPorVolumen: [
       { desde: 1, hasta: 9, precioUnitario: 2990 },
       { desde: 10, hasta: 39, precioUnitario: 2490 },
@@ -292,8 +343,9 @@ export const PRODUCTOS_SEED: Producto[] = [
     categoria: 'carburacion-arranque', subcategoria: 'Carburadores',
     precio: 27990, stock: 8,
     fotos: [foto('Carburador MS250')],
-    marcasCompatibles: ['Stihl'],
-    modelosCompatibles: ['MS 210', 'MS 230', 'MS 250'],
+    compatibilidades: [
+      { marca: 'Stihl', modelos: ['MS 210', 'MS 230', 'MS 250'] },
+    ],
     preciosPorVolumen: [
       { desde: 1, hasta: 9, precioUnitario: 27990 },
       { desde: 10, hasta: null, precioUnitario: 24990 },
@@ -308,8 +360,9 @@ export const PRODUCTOS_SEED: Producto[] = [
     categoria: 'desbrozadoras', subcategoria: 'Desbrozadoras',
     precio: 149990, stock: 5,
     fotos: [foto('Desbrozadora RT43L')],
-    marcasCompatibles: ['Toyama'],
-    modelosCompatibles: ['RT43L'],
+    compatibilidades: [
+      { marca: 'Toyama', modelos: ['RT43L'] },
+    ],
     preciosPorVolumen: [
       { desde: 1, hasta: 4, precioUnitario: 149990 },
       { desde: 5, hasta: null, precioUnitario: 137990 },
