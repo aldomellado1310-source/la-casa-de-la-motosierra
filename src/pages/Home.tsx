@@ -16,6 +16,7 @@ import {
 import { MarcaMotosierra } from '../components/LogoLCM';
 import { WHATSAPP_NUMERO } from '../config/firebase';
 import { obtenerCategorias, obtenerMarcasCompatibles, obtenerProductos } from '../services/productos';
+import { estadoStock } from '../utils/precio';
 import { useSeo } from '../utils/seo';
 import type { Categoria, Producto } from '../types';
 
@@ -54,18 +55,21 @@ export default function Home() {
   };
   useEffect(cargar, []);
 
-  const destacados = productos.filter((p) => p.destacado || (p.precioOferta && p.precioOferta < p.precio)).slice(0, 8);
+  const marcados = productos.filter((p) => p.destacado || (p.precioOferta && p.precioOferta < p.precio));
+  // Sin destacados ni ofertas (catálogo recién importado): mostrar productos con stock
+  const destacados = (marcados.length > 0 ? marcados : productos.filter((p) => estadoStock(p) !== 'agotado')).slice(0, 8);
   const conteoPorCategoria = (id: string) => productos.filter((p) => p.categoria === id).length;
 
   return (
     <div>
       {/* ── Hero fotográfico ─────────────────────────────── */}
       <section className="relative isolate overflow-hidden bg-carbon">
+        {/* La prioridad de carga la fija el <link rel="preload"> del hero en
+            index.html; React 18 no reconoce el atributo fetchPriority en el img. */}
         <img
           src="/hero.webp"
           alt=""
           aria-hidden="true"
-          fetchPriority="high"
           width={1600}
           height={840}
           className="animar-kenburns absolute inset-0 h-full w-full object-cover opacity-45"
