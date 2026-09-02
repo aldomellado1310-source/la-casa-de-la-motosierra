@@ -76,8 +76,13 @@ Usuarios demo: `cliente@demo.cl` / `empresa@demo.cl` / `admin@demo.cl`, clave `d
 - Dominio placeholder `lacasadelamotosierra.cl` en `robots.txt` y `sitemap.xml`.
 - Datos legales de referencia en `/terminos` y `/privacidad` (RUT, plazos): validar con el
   cliente antes de producción.
-- Fotos placeholder en varios productos hasta recibir el catálogo oficial del proveedor.
-- Deploy a Firebase pendiente: el CLI ya está autenticado pero **no existe proyecto
-  Firebase para esta tienda** (crear `la-casa-de-la-motosierra`, enlazar con `.firebaserc`,
-  habilitar Firestore/Storage/Auth, `.env` con credenciales web y desplegar hosting+reglas;
-  las functions de pago requieren plan Blaze y sus secretos).
+- Catálogo real importado (~497 ítems). Pendiente de enriquecer desde el panel
+  admin: fotos propias (hoy placeholder), descripciones, modelos compatibles
+  por marca, revisar categorías de la heurística y renombrar ítems cuyo nombre
+  es solo un código (`inv-c222`, etc.). `src/data/seed.ts` es archivo generado
+  (`npm run importar-inventario`).
+- Deploy a Firebase: el proyecto `la-casa-de-la-motosierra` ya existe y está
+  enlazado (`.firebaserc`). Falta: `serviceAccountKey.json` en la raíz para
+  `npm run importar-inventario -- --push`, y `firebase deploy --only
+  hosting,firestore:rules,storage:rules`. Las functions de pago requieren plan
+  Blaze y sus secretos (rama de pagos).
