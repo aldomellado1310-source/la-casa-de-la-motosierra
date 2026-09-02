@@ -7,9 +7,13 @@
 //                                                solo actualiza stock/precio
 //                                                de los docs ya existentes
 //
-// --push requiere serviceAccountKey.json en la raíz (ver scripts/seed.ts).
+// Credenciales para --push (en este orden):
+//   1. serviceAccountKey.json en la raíz (ver scripts/seed.ts), o
+//   2. Application Default Credentials: `gcloud auth application-default login`
+//      (útil si la organización bloquea la creación de claves de cuenta de
+//      servicio). El projectId se toma de .firebaserc o GOOGLE_CLOUD_PROJECT.
 // ============================================================
-import { readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { transformarInventario } from './lib/transformarInventario';
 import type { Categoria, Producto } from '../src/types';
@@ -49,20 +53,43 @@ export const PRODUCTOS_SEED: Producto[] = ${JSON.stringify(productos, null, 2)};
 `;
 }
 
+/** projectId desde env o .firebaserc (para el modo Application Default Credentials) */
+function leerProjectId(): string | undefined {
+  const env = process.env.GOOGLE_CLOUD_PROJECT || process.env.GCLOUD_PROJECT;
+  if (env) return env;
+  try {
+    const rc = JSON.parse(readFileSync(resolve(process.cwd(), '.firebaserc'), 'utf8')) as {
+      projects?: Record<string, string>;
+    };
+    return rc.projects?.default;
+  } catch {
+    return undefined;
+  }
+}
+
 async function subir(productos: Producto[], soloStock: boolean): Promise<void> {
-  const { initializeApp, cert } = await import('firebase-admin/app');
+  const { initializeApp, cert, applicationDefault } = await import('firebase-admin/app');
   const { getFirestore } = await import('firebase-admin/firestore');
   const rutaClave = resolve(process.cwd(), 'serviceAccountKey.json');
-  let credencial: Record<string, unknown>;
-  try {
-    credencial = JSON.parse(readFileSync(rutaClave, 'utf8')) as Record<string, unknown>;
-  } catch {
-    console.error('No se encontró serviceAccountKey.json en la raíz del proyecto.');
-    process.exit(1);
+
+  if (existsSync(rutaClave)) {
+    const credencial = JSON.parse(readFileSync(rutaClave, 'utf8')) as Record<string, unknown>;
+    initializeApp({ credential: cert(rutaClave) });
+    console.log(`Proyecto: ${credencial.project_id as string} (serviceAccountKey.json)`);
+  } else {
+    const projectId = leerProjectId();
+    if (!projectId) {
+      console.error(
+        'Sin serviceAccountKey.json y sin projectId. Elige una:\n' +
+        '  a) Genera serviceAccountKey.json (Firebase Console > Cuentas de servicio), o\n' +
+        '  b) gcloud auth application-default login   (usa .firebaserc para el projectId)',
+      );
+      process.exit(1);
+    }
+    initializeApp({ credential: applicationDefault(), projectId });
+    console.log(`Proyecto: ${projectId} (Application Default Credentials)`);
   }
-  initializeApp({ credential: cert(rutaClave) });
   const db = getFirestore();
-  console.log(`Proyecto: ${credencial.project_id as string}`);
 
   if (soloStock) {
     let ok = 0;
