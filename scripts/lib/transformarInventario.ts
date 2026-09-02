@@ -107,3 +107,106 @@ export function clasificar(departamento: string, nombre: string): Clasif {
   }
   return CLASIF_FALLBACK;
 }
+
+export interface FilaInventario {
+  codigo: string;
+  descripcion: string;
+  precioVenta: string;
+  precioMayoreo: string;
+  inventario: string;
+  departamento: string;
+}
+
+export interface ResultadoTransformacion {
+  productos: Producto[];
+  /** Filas no importadas (prueba/basura) */
+  descartados: { codigo: string; motivo: string }[];
+  /** Productos importados que el cliente debería revisar */
+  revisar: { id: string; nombre: string; motivo: string }[];
+}
+
+const PLACEHOLDER = (sku: string) =>
+  `https://placehold.co/600x600/FFFFFF/9AA09B/png?text=${encodeURIComponent(sku)}`;
+
+/** Parsea el TSV (tab-separado, con cabecera). Sin comillas ni escapes. */
+export function parsearTsv(contenido: string): FilaInventario[] {
+  const lineas = contenido.split(/\r?\n/).filter((l) => l.trim().length > 0);
+  return lineas.slice(1).map((linea) => {
+    const c = linea.split('\t');
+    return {
+      codigo: (c[0] ?? '').trim(),
+      descripcion: (c[1] ?? '').trim(),
+      precioVenta: (c[3] ?? '').trim(),
+      precioMayoreo: (c[4] ?? '').trim(),
+      inventario: (c[5] ?? '').trim(),
+      departamento: (c[7] ?? '').trim(),
+    };
+  });
+}
+
+function tramos(precio: number, mayoreo: number): { desde: number; hasta: number | null; precioUnitario: number }[] {
+  if (mayoreo > 0 && mayoreo < precio) {
+    return [
+      { desde: 1, hasta: 9, precioUnitario: precio },
+      { desde: 10, hasta: null, precioUnitario: mayoreo },
+    ];
+  }
+  return [{ desde: 1, hasta: null, precioUnitario: precio }];
+}
+
+/** Ensambla un Producto a partir de una fila. `id` sin desambiguar. */
+export function filaAProducto(fila: FilaInventario): Producto {
+  const nombre = (fila.descripcion || fila.codigo).replace(/\s+/g, ' ').trim();
+  const precio = parsearPrecio(fila.precioVenta);
+  const mayoreo = parsearPrecio(fila.precioMayoreo);
+  const marcas = extraerMarcas(nombre);
+  const { categoria, subcategoria } = clasificar(fila.departamento, nombre);
+  return {
+    id: slugId(fila.codigo),
+    sku: fila.codigo,
+    nombre,
+    descripcion: '',
+    categoria,
+    subcategoria,
+    precio,
+    stock: parsearStock(fila.inventario),
+    fotos: [PLACEHOLDER(fila.codigo)],
+    compatibilidades: marcas.map((marca): Compatibilidad => ({ marca, modelos: [] })),
+    preciosPorVolumen: tramos(precio, mayoreo),
+    destacado: false,
+    activo: fila.departamento.trim().toUpperCase() !== 'MANO DE OBRA',
+    bajoPedido: false,
+  };
+}
+
+/** Orquesta: parsea, descarta basura, ensambla, desambigua ids, arma listas de revisión. */
+export function transformarInventario(contenidoTsv: string): ResultadoTransformacion {
+  const filas = parsearTsv(contenidoTsv);
+  const productos: Producto[] = [];
+  const descartados: ResultadoTransformacion['descartados'] = [];
+  const revisar: ResultadoTransformacion['revisar'] = [];
+  const idsVistos = new Map<string, number>();
+
+  for (const fila of filas) {
+    const precio = parsearPrecio(fila.precioVenta);
+    if (precio <= 1) {
+      descartados.push({ codigo: fila.codigo, motivo: `precio ${fila.precioVenta || '(vacío)'}` });
+      continue;
+    }
+    const p = filaAProducto(fila);
+
+    const previos = idsVistos.get(p.id) ?? 0;
+    if (previos > 0) {
+      p.id = `${p.id}-${previos + 1}`;
+      revisar.push({ id: p.id, nombre: p.nombre, motivo: 'id duplicado por slug del código' });
+    }
+    idsVistos.set(slugId(fila.codigo), previos + 1);
+
+    if (!fila.descripcion) {
+      revisar.push({ id: p.id, nombre: p.nombre, motivo: 'sin descripción: el nombre es el código' });
+    }
+    productos.push(p);
+  }
+
+  return { productos, descartados, revisar };
+}
