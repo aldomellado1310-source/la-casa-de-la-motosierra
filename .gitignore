@@ -24,3 +24,6 @@ Thumbs.db
 
 # Artefactos de TypeScript
 *.tsbuildinfo
+
+# Worktrees de desarrollo aislado (superpowers)
+.worktrees/
