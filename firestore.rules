@@ -10,6 +10,11 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol == 'admin';
     }
 
+    /** Formato simple de correo (sin espacios, con @ y dominio con punto) */
+    function esCorreo(v) {
+      return v is string && v.size() <= 254 && v.matches('^[^@ ]+@[^@ ]+[.][^@ ]+$');
+    }
+
     // Catálogo: lectura pública, escritura solo admin
     match /productos/{id} {
       allow read: if true;
@@ -35,32 +40,73 @@ service cloud.firestore {
       allow read, write: if request.auth != null && request.auth.uid == uid;
     }
 
-    // Pedidos: crea cualquiera (incluye invitados vía frontend), pero con
-    // forma mínima y SIEMPRE en estado inicial 'pendiente_pago' — un pedido
-    // no puede nacer "pagado": ese estado lo fijan las Cloud Functions
-    // (Admin SDK) tras verificar el pago, o el admin.
+    // Pedidos.
+    // - Webpay / Mercado Pago: los crea SOLO la Cloud Function `crearPedido`
+    //   (Admin SDK, no pasa por estas reglas) con precios y total calculados
+    //   en el servidor y `origen: 'servidor'`. Las functions de pago exigen
+    //   ese origen, así que un pedido escrito desde el navegador nunca se
+    //   puede cobrar por pasarela.
+    // - Transferencia: se permite crear desde el navegador como respaldo
+    //   cuando no hay functions desplegadas. Ese total lo calculó el
+    //   navegador → el admin DEBE verificar el monto al validar el
+    //   comprobante. Whitelist de claves: no se pueden escribir
+    //   stockDescontado, stockInsuficiente, referenciaPago, intentosPago,
+    //   comprobanteUrl ni origen (CN-005).
+    // - Siempre nace en 'pendiente_pago': 'pagado' lo fijan las functions
+    //   (tras verificar el pago) o el admin.
     // `get` por id es público para el seguimiento de pedido sin sesión:
     // el número de pedido (sufijo criptográfico de 8 caracteres) actúa
-    // como token de consulta. `list` (enumerar) queda solo para el admin.
+    // como token de consulta. `list` (enumerar) queda para el admin o
+    // para los pedidos propios.
     match /pedidos/{id} {
-      allow create: if request.resource.data.estado == 'pendiente_pago'
-        && request.resource.data.total is number
-        && request.resource.data.total > 0
-        && request.resource.data.items is list
-        && request.resource.data.items.size() > 0
-        && request.resource.data.emailCliente is string;
+      /** uid propio con sesión, o 'invitado' sin sesión */
+      function uidPedidoValido() {
+        return (request.auth != null && request.resource.data.uid == request.auth.uid)
+          || (request.auth == null && request.resource.data.uid == 'invitado');
+      }
+      function pedidoTransferenciaValido() {
+        let d = request.resource.data;
+        return d.keys().hasOnly(['uid', 'nombreCliente', 'emailCliente', 'items', 'subtotal',
+            'costoEnvio', 'total', 'metodoPago', 'metodoEnvio', 'direccion', 'estado', 'fecha'])
+          && d.keys().hasAll(['uid', 'nombreCliente', 'emailCliente', 'items', 'subtotal',
+            'costoEnvio', 'total', 'metodoPago', 'metodoEnvio', 'estado', 'fecha'])
+          && id.matches('^PED-[0-9]{8}-[A-Z0-9]{8}$')
+          && d.metodoPago == 'transferencia'
+          && d.estado == 'pendiente_pago'
+          && d.metodoEnvio in ['retiro_tienda', 'starken', 'chilexpress', 'bluexpress']
+          && d.subtotal is number && d.subtotal > 0
+          && d.costoEnvio is number && d.costoEnvio >= 0
+          && d.total is number && d.total == d.subtotal + d.costoEnvio
+          && d.items is list && d.items.size() > 0 && d.items.size() <= 50
+          && d.nombreCliente is string && d.nombreCliente.size() > 0 && d.nombreCliente.size() <= 120
+          && esCorreo(d.emailCliente)
+          && d.fecha is string && d.fecha.size() <= 40
+          && (!('direccion' in d) || d.direccion is map)
+          && uidPedidoValido();
+      }
+      // El admin también puede crear pedidos (p. ej. convertir una cotización)
+      allow create: if esAdmin() || pedidoTransferenciaValido();
       allow get: if true;
       // Cada usuario puede listar solo sus pedidos (query con uid == auth.uid)
       allow list: if esAdmin() || (request.auth != null && resource.data.uid == request.auth.uid);
       // Adjuntar comprobante de transferencia: cualquiera con el número-token
-      // (cubre pedidos de invitado, sin sesión). Solo permite la transición
-      // pendiente_pago → pendiente_validacion; jamás auto-marcarse 'pagado'.
+      // (cubre pedidos de invitado, sin sesión). Solo pedidos por
+      // transferencia y solo la transición pendiente_pago →
+      // pendiente_validacion; jamás auto-marcarse 'pagado'.
+      // `comprobanteUrl` guarda la RUTA del objeto en Storage (no una URL),
+      // dentro de la carpeta de comprobantes de ESTE pedido:
+      //   comprobantes/<id>/<epochMs>-<nombre-saneado>
+      // El panel admin la resuelve con getDownloadURL; así nunca se
+      // muestra como enlace una URL arbitraria (javascript:/phishing — CN-002).
       allow update: if esAdmin()
         || (request.resource.data.diff(resource.data).affectedKeys()
               .hasOnly(['comprobanteUrl', 'estado'])
+            && resource.data.metodoPago == 'transferencia'
             && resource.data.estado == 'pendiente_pago'
             && request.resource.data.estado == 'pendiente_validacion'
-            && request.resource.data.comprobanteUrl is string);
+            && request.resource.data.comprobanteUrl is string
+            && request.resource.data.comprobanteUrl.matches(
+                 '^comprobantes/' + id + '/[A-Za-z0-9][A-Za-z0-9._-]{0,119}$'));
       allow delete: if esAdmin();
     }
 
@@ -72,16 +118,56 @@ service cloud.firestore {
       allow update, delete: if esAdmin();
     }
 
-    // Avisos "cuando llegue stock": cualquiera puede dejar su correo
+    // Avisos "cuando llegue stock": cualquiera puede dejar su correo, pero
+    // solo con la forma exacta que escribe el servicio (CN-014)
     match /avisosStock/{id} {
-      allow create: if true;
+      allow create: if request.resource.data.keys().hasOnly(['productoId', 'sku', 'email', 'fecha', 'notificado'])
+        && request.resource.data.keys().hasAll(['productoId', 'sku', 'email', 'fecha', 'notificado'])
+        && request.resource.data.productoId is string
+        && request.resource.data.productoId.size() > 0
+        && request.resource.data.productoId.size() <= 128
+        && request.resource.data.sku is string
+        && request.resource.data.sku.size() <= 64
+        && esCorreo(request.resource.data.email)
+        && request.resource.data.fecha is string
+        && request.resource.data.fecha.size() <= 40
+        && request.resource.data.notificado == false;
       allow read, update, delete: if esAdmin();
     }
 
-    // Contadores correlativos (folio de cotización por año).
-    // Solo usuarios autenticados: las cotizaciones exigen sesión.
+    // Contadores correlativos: contadores/cotizaciones guarda un campo por
+    // año con el último folio (ver generarFolio en services/cotizaciones.ts).
+    // Solo usuarios autenticados (las cotizaciones exigen sesión) y solo
+    // incrementos de +1 en el campo de UN año; se acepta el año anterior o
+    // siguiente por la diferencia de zona horaria en el cambio de año
+    // (CN-010). El admin puede corregirlos.
     match /contadores/{id} {
-      allow read, write: if request.auth != null;
+      function anioCercano(k) {
+        return k in [string(request.time.year() - 1), string(request.time.year()),
+                     string(request.time.year() + 1)];
+      }
+      /** Crear el documento con un único campo de año en 1 */
+      function creaEnUno(k) {
+        return anioCercano(k)
+          && request.resource.data.keys().hasOnly([k])
+          && request.resource.data[k] == 1;
+      }
+      /** Actualizar solo el campo del año, en +1 (o crearlo en 1) */
+      function incrementaUno(k) {
+        return anioCercano(k)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([k])
+          && request.resource.data[k] == resource.data.get(k, 0) + 1;
+      }
+      allow read: if request.auth != null;
+      allow create: if esAdmin() || (request.auth != null && id == 'cotizaciones'
+        && (creaEnUno(string(request.time.year()))
+          || creaEnUno(string(request.time.year() - 1))
+          || creaEnUno(string(request.time.year() + 1))));
+      allow update: if esAdmin() || (request.auth != null && id == 'cotizaciones'
+        && (incrementaUno(string(request.time.year()))
+          || incrementaUno(string(request.time.year() - 1))
+          || incrementaUno(string(request.time.year() + 1))));
+      allow delete: if esAdmin();
     }
   }
 }

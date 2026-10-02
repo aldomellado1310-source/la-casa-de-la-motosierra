@@ -2,18 +2,19 @@
   "name": "functions",
   "description": "Cloud Functions — pagos (Webpay/Mercado Pago) y PDF de cotizaciones",
   "engines": {
-    "node": "20"
+    "node": "22"
   },
   "main": "lib/index.js",
   "scripts": {
     "build": "tsc",
+    "test": "cd .. && npx tsx --test functions/src/*.test.ts",
     "serve": "npm run build && firebase emulators:start --only functions",
     "deploy": "firebase deploy --only functions"
   },
   "dependencies": {
-    "firebase-admin": "^12.7.0",
-    "firebase-functions": "^6.1.0",
-    "mercadopago": "^2.0.15",
+    "firebase-admin": "^14.5.0",
+    "firebase-functions": "^7.4.0",
+    "mercadopago": "^3.6.1",
     "pdfkit": "^0.15.1",
     "transbank-sdk": "^5.0.0"
   },

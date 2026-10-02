@@ -138,12 +138,18 @@ export interface Pedido {
   direccion?: Direccion;
   estado: EstadoPedido;
   fecha: string; // ISO
-  /** URL comprobante de transferencia (Storage) */
+  /** RUTA en Storage del comprobante de transferencia: comprobantes/<pedidoId>/<epochMs>-<nombre> (demo: demo://<nombre>) */
   comprobanteUrl?: string;
   /** Token/orden de la pasarela */
   referenciaPago?: string;
   /** true cuando el stock de los items ya fue descontado (evita doble descuento) */
   stockDescontado?: boolean;
+  /** true si al descontar no alcanzó el stock (quedó en 0): revisar el pedido */
+  stockInsuficiente?: boolean;
+  /** 'servidor' = creado por la Cloud Function con total calculado en servidor */
+  origen?: 'servidor';
+  /** Tokens/preferencias de cada intento de pago con pasarela */
+  intentosPago?: string[];
 }
 
 export type EstadoCotizacion = 'enviada' | 'aprobada' | 'convertida' | 'vencida';

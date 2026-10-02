@@ -7,10 +7,11 @@ import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../stores/useAuth';
 import { useCarrito } from '../stores/useCarrito';
-import { crearPedido, subirComprobante } from '../services/pedidos';
+import { crearPedidoCheckout, subirComprobante } from '../services/pedidos';
 import { invalidarCacheProductos, obtenerProducto } from '../services/productos';
 import { DATOS_TRANSFERENCIA, iniciarPagoMercadoPago, iniciarPagoWebpay, redirigirAWebpay } from '../services/pagos';
 import { REGIONES_CHILE, calcularOpcionesEnvio } from '../services/envios';
+import { FUNCTIONS_URL, MODO_DEMO } from '../config/firebase';
 import { formatoCLP } from '../utils/precio';
 import { useSeo } from '../utils/seo';
 import { IconoCandado } from '../components/Iconos';
@@ -28,6 +29,28 @@ function TituloPaso({ n, children }: { n: number; children: React.ReactNode }) {
   );
 }
 
+/**
+ * Pago en línea (Webpay / Mercado Pago) disponible solo si hay Cloud
+ * Functions (el total lo calcula el servidor) o en modo demo. Sin
+ * functions queda solo transferencia.
+ */
+const PAGO_EN_LINEA = MODO_DEMO || Boolean(FUNCTIONS_URL);
+
+const MEDIOS_PAGO: { id: MetodoPago; nombre: string; detalle: string }[] = [
+  { id: 'webpay', nombre: 'Tarjeta (Webpay)', detalle: 'Débito, crédito o prepago. Pago seguro de Transbank.' },
+  { id: 'mercadopago', nombre: 'Mercado Pago', detalle: 'Tarjetas con cuotas o saldo de Mercado Pago.' },
+  { id: 'transferencia', nombre: 'Transferencia bancaria', detalle: 'Te damos los datos de la cuenta. Envías el comprobante y despachamos.' },
+];
+const MEDIOS_DISPONIBLES = PAGO_EN_LINEA ? MEDIOS_PAGO : MEDIOS_PAGO.filter((m) => m.id === 'transferencia');
+
+/** Pedido creado cuyo total (calculado por el servidor) difiere del mostrado */
+interface CambioTotal {
+  id: string;
+  metodo: Exclude<MetodoPago, 'transferencia'>;
+  total: number;
+  totalAnterior: number;
+}
+
 export default function Checkout() {
   useSeo({
     titulo: 'Finalizar compra',
@@ -42,12 +65,14 @@ export default function Checkout() {
   const [direccionId, setDireccionId] = useState('');
   const [dirNueva, setDirNueva] = useState({ calle: '', numero: '', comuna: '' });
   const [metodoEnvio, setMetodoEnvio] = useState<MetodoEnvio>('retiro_tienda');
-  const [metodoPago, setMetodoPago] = useState<MetodoPago>('webpay');
+  const [metodoPago, setMetodoPago] = useState<MetodoPago>(PAGO_EN_LINEA ? 'webpay' : 'transferencia');
   const [comprobante, setComprobante] = useState<File | null>(null);
   const [procesando, setProcesando] = useState(false);
   const [error, setError] = useState('');
   // Se congela el total al crear el pedido: tras vaciar el carrito, totalFinal vuelve a 0
-  const [pedidoTransferencia, setPedidoTransferencia] = useState<{ id: string; total: number } | null>(null);
+  const [pedidoTransferencia, setPedidoTransferencia] = useState<{ id: string; total: number; totalAnterior: number } | null>(null);
+  // Pedido con pasarela cuyo total cambió: se pide confirmar antes de pagar
+  const [cambioTotal, setCambioTotal] = useState<CambioTotal | null>(null);
   const [emailInvitado, setEmailInvitado] = useState('');
   const [nombreInvitado, setNombreInvitado] = useState('');
 
@@ -58,7 +83,7 @@ export default function Checkout() {
   const costoEnvio = envioElegido.costo;
   const totalFinal = total() + costoEnvio;
 
-  if (items.length === 0 && !pedidoTransferencia) {
+  if (items.length === 0 && !pedidoTransferencia && !cambioTotal) {
     return (
       <div className="contenedor max-w-xl py-16 text-center">
         <p className="text-xl font-bold">No tienes productos en el carrito.</p>
@@ -100,15 +125,17 @@ export default function Checkout() {
     setError('');
     setProcesando(true);
     try {
-      // Revalidar stock real antes de crear el pedido: el carrito guarda un
-      // snapshot que puede haber quedado desactualizado
-      invalidarCacheProductos();
-      for (const it of items) {
-        const prod = await obtenerProducto(it.productoId);
-        if (prod && !prod.bajoPedido && prod.stock < it.cantidad) {
-          setError(`Stock insuficiente de "${it.nombre}": quedan ${prod.stock} unidades disponibles.`);
-          setProcesando(false);
-          return;
+      // Sin Cloud Functions revalidamos el stock aquí (el carrito guarda un
+      // snapshot); con functions lo valida el servidor al crear el pedido
+      if (MODO_DEMO || !FUNCTIONS_URL) {
+        invalidarCacheProductos();
+        for (const it of items) {
+          const prod = await obtenerProducto(it.productoId);
+          if (prod && !prod.bajoPedido && prod.stock < it.cantidad) {
+            setError(`No nos alcanza el stock de "${it.nombre}": quedan ${prod.stock} unidades. Baja la cantidad en el carrito.`);
+            setProcesando(false);
+            return;
+          }
         }
       }
       const base: Omit<Pedido, 'id'> = {
@@ -125,26 +152,50 @@ export default function Checkout() {
         estado: 'pendiente_pago',
         fecha: new Date().toISOString(),
       };
-      const pedidoId = await crearPedido(base);
+      const creado = await crearPedidoCheckout(base);
 
-      if (metodoPago === 'webpay') {
-        const resp = await iniciarPagoWebpay(pedidoId);
-        vaciar();
-        redirigirAWebpay(resp);
-        return;
-      }
-      if (metodoPago === 'mercadopago') {
-        const url = await iniciarPagoMercadoPago(pedidoId, `Pedido ${pedidoId} — La Casa de la Motosierra`);
-        vaciar();
-        window.location.href = url;
+      if (metodoPago === 'webpay' || metodoPago === 'mercadopago') {
+        if (creado.total !== totalFinal) {
+          // Cambió un precio desde que se armó el carrito: mostrar el total
+          // real y pedir confirmación antes de mandar a pagar
+          setCambioTotal({ id: creado.id, metodo: metodoPago, total: creado.total, totalAnterior: totalFinal });
+          return;
+        }
+        await irAPagar(creado.id, metodoPago);
         return;
       }
       // Transferencia: mostramos datos bancarios y permitimos subir comprobante
-      setPedidoTransferencia({ id: pedidoId, total: totalFinal });
+      setPedidoTransferencia({ id: creado.id, total: creado.total, totalAnterior: totalFinal });
       vaciar();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Ocurrió un error al procesar el pago.');
     } finally {
+      setProcesando(false);
+    }
+  };
+
+  /** Inicia el pago con la pasarela y redirige */
+  const irAPagar = async (pedidoId: string, metodo: CambioTotal['metodo']) => {
+    if (metodo === 'webpay') {
+      const resp = await iniciarPagoWebpay(pedidoId);
+      vaciar();
+      redirigirAWebpay(resp);
+      return;
+    }
+    const url = await iniciarPagoMercadoPago(pedidoId);
+    vaciar();
+    window.location.href = url;
+  };
+
+  /** Confirmación del total nuevo → pagar */
+  const confirmarYPagar = async () => {
+    if (!cambioTotal) return;
+    setError('');
+    setProcesando(true);
+    try {
+      await irAPagar(cambioTotal.id, cambioTotal.metodo);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'No se pudo iniciar el pago. Inténtalo de nuevo.');
       setProcesando(false);
     }
   };
@@ -162,6 +213,36 @@ export default function Checkout() {
     }
   };
 
+  // --- El total del servidor difiere del mostrado: confirmar antes de pagar ---
+  if (cambioTotal) {
+    return (
+      <div className="contenedor max-w-2xl py-10">
+        <div className="tarjeta">
+          <h1 className="font-display text-2xl font-bold uppercase tracking-wide text-grafito">Revisa el total antes de pagar</h1>
+          <p className="mt-3 text-base">
+            Un precio cambió desde que armaste tu carrito. Este es el total actualizado de tu pedido <strong>{cambioTotal.id}</strong>:
+          </p>
+          <dl className="mt-5 space-y-2 rounded-xl bg-gris-fondo p-4 text-base">
+            <div className="flex flex-wrap justify-between gap-x-3">
+              <dt>Total que veías</dt>
+              <dd className="text-gris-600 line-through">{formatoCLP(cambioTotal.totalAnterior)}</dd>
+            </div>
+            <div className="flex flex-wrap items-baseline justify-between gap-x-3 border-t border-borde pt-2">
+              <dt className="font-bold">Total a pagar</dt>
+              <dd className="text-2xl font-bold">{formatoCLP(cambioTotal.total)}</dd>
+            </div>
+          </dl>
+          {error && <p role="alert" className="mt-3 rounded-lg bg-oferta/10 p-3 text-base font-semibold text-oferta">{error}</p>}
+          <button onClick={confirmarYPagar} disabled={procesando} className="btn-primario btn-grande mt-5 w-full">
+            {procesando ? 'Procesando…' : `Pagar ${formatoCLP(cambioTotal.total)}`}
+          </button>
+          <Link to="/carrito" className="btn-secundario btn-grande mt-3 w-full">Volver al carrito</Link>
+          <p className="ayuda mt-3">¿Dudas con el precio? Escríbenos por WhatsApp antes de pagar.</p>
+        </div>
+      </div>
+    );
+  }
+
   // --- Pantalla de transferencia (post-creación del pedido) ---
   if (pedidoTransferencia) {
     return (
@@ -172,6 +253,12 @@ export default function Checkout() {
             Transfiere <strong className="text-naranja-oscuro">{formatoCLP(pedidoTransferencia.total)}</strong> a la siguiente cuenta y sube el
             comprobante. Tu pedido quedará <strong>pendiente de validación</strong> hasta que confirmemos el pago.
           </p>
+          {pedidoTransferencia.total !== pedidoTransferencia.totalAnterior && (
+            <p role="status" className="mt-3 rounded-lg bg-ambar-fondo p-3 text-ambar text-base font-semibold">
+              Ojo: un precio cambió desde que armaste tu carrito. Antes veías {formatoCLP(pedidoTransferencia.totalAnterior)};
+              transfiere el total actualizado de {formatoCLP(pedidoTransferencia.total)}.
+            </p>
+          )}
           <dl className="mt-5 space-y-2 rounded-xl bg-gris-fondo p-4 text-base">
             <div className="flex flex-wrap justify-between gap-x-3"><dt>Banco</dt><dd className="font-semibold">{DATOS_TRANSFERENCIA.banco}</dd></div>
             <div className="flex flex-wrap justify-between gap-x-3"><dt>Tipo de cuenta</dt><dd className="font-semibold">{DATOS_TRANSFERENCIA.tipoCuenta}</dd></div>
@@ -274,7 +361,17 @@ export default function Checkout() {
                 {usuario && usuario.direcciones.length > 0 && (
                   <div className="mb-3">
                     <label className="etiqueta" htmlFor="chk-dir-guardada">Usar dirección guardada</label>
-                    <select id="chk-dir-guardada" value={direccionId} onChange={(e) => setDireccionId(e.target.value)} className="campo">
+                    <select
+                      id="chk-dir-guardada"
+                      value={direccionId}
+                      onChange={(e) => {
+                        setDireccionId(e.target.value);
+                        // El envío se cobra según la región de la dirección elegida
+                        const elegida = usuario.direcciones.find((d) => d.id === e.target.value);
+                        if (elegida && (REGIONES_CHILE as readonly string[]).includes(elegida.region)) setRegion(elegida.region);
+                      }}
+                      className="campo"
+                    >
                       <option value="">Ingresar nueva dirección…</option>
                       {usuario.direcciones.map((d) => (
                         <option key={d.id} value={d.id}>{d.alias}: {d.calle} {d.numero}, {d.comuna}</option>
@@ -306,11 +403,7 @@ export default function Checkout() {
           <section className="tarjeta">
             <TituloPaso n={usuario ? 2 : 3}>¿Cómo quieres pagar?</TituloPaso>
             <div className="mt-4 space-y-3">
-              {[
-                { id: 'webpay' as const, nombre: 'Tarjeta (Webpay)', detalle: 'Débito, crédito o prepago. Pago seguro de Transbank.' },
-                { id: 'mercadopago' as const, nombre: 'Mercado Pago', detalle: 'Tarjetas con cuotas o saldo de Mercado Pago.' },
-                { id: 'transferencia' as const, nombre: 'Transferencia bancaria', detalle: 'Te damos los datos de la cuenta. Envías el comprobante y despachamos.' },
-              ].map((mp) => (
+              {MEDIOS_DISPONIBLES.map((mp) => (
                 <label
                   key={mp.id}
                   className={`opcion ${metodoPago === mp.id ? 'opcion-activa' : ''}`}
@@ -323,6 +416,9 @@ export default function Checkout() {
                 </label>
               ))}
             </div>
+            {!PAGO_EN_LINEA && (
+              <p className="ayuda mt-3">Por ahora recibimos pagos por transferencia. Pronto podrás pagar con tarjeta.</p>
+            )}
           </section>
         </div>
 

@@ -1,8 +1,49 @@
-﻿// Admin > Pedidos: listado con detalle y cambio de estado
+// Admin > Pedidos: listado con detalle y cambio de estado
 import { useEffect, useState } from 'react';
-import { ETIQUETAS_ESTADO_PEDIDO, actualizarEstadoPedido, descontarStockPedido, obtenerTodosLosPedidos } from '../../services/pedidos';
+import {
+  ETIQUETAS_ESTADO_PEDIDO, actualizarEstadoPedido, descontarStockPedido,
+  obtenerTodosLosPedidos, obtenerUrlComprobante,
+} from '../../services/pedidos';
 import { formatoCLP } from '../../utils/precio';
+import { esRutaComprobanteValida } from '../../utils/urlSegura';
+import { MODO_DEMO } from '../../config/firebase';
 import type { EstadoPedido, Pedido } from '../../types';
+
+/**
+ * Enlace al comprobante de transferencia. `comprobanteUrl` lo escribe el
+ * cliente: se valida que sea la ruta de Storage de ESTE pedido y la URL
+ * de descarga se pide al SDK (nunca se usa el valor guardado como href).
+ */
+function EnlaceComprobante({ pedidoId, ruta }: { pedidoId: string; ruta: string }) {
+  const valida = esRutaComprobanteValida(ruta, { pedidoId, modoDemo: MODO_DEMO });
+  const [url, setUrl] = useState<string | null>(null);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    if (!valida || ruta.startsWith('demo://')) return;
+    let vigente = true;
+    obtenerUrlComprobante(ruta)
+      .then((u) => { if (vigente) setUrl(u); })
+      .catch(() => { if (vigente) setError(true); });
+    return () => { vigente = false; };
+  }, [ruta, valida]);
+
+  if (!valida) {
+    return <p className="font-semibold text-oferta" role="alert">Comprobante con enlace no válido — revisar</p>;
+  }
+  if (ruta.startsWith('demo://')) {
+    return <p>Comprobante recibido (demo): {ruta.slice('demo://'.length)}</p>;
+  }
+  if (error) {
+    return <p className="font-semibold text-oferta" role="alert">No se pudo abrir el comprobante. Recarga la página.</p>;
+  }
+  if (!url) return <p className="text-gris-600">Cargando comprobante…</p>;
+  return (
+    <a href={url} target="_blank" rel="noopener noreferrer" className="font-semibold text-verde hover:underline">
+      Ver comprobante de transferencia →
+    </a>
+  );
+}
 
 const ESTADOS: EstadoPedido[] = [
   'pendiente_pago', 'pendiente_validacion', 'pagado', 'preparando',
@@ -74,10 +115,17 @@ export default function AdminPedidos() {
                     <p>Dirección: {p.direccion.calle} {p.direccion.numero}, {p.direccion.comuna} ({p.direccion.region})</p>
                   )}
                   <p>Pago: <strong>{p.metodoPago}</strong>{p.referenciaPago ? ` · ref ${p.referenciaPago}` : ''}</p>
-                  {p.comprobanteUrl && (
-                    <a href={p.comprobanteUrl} target="_blank" rel="noreferrer" className="font-semibold text-verde hover:underline">
-                      Ver comprobante de transferencia →
-                    </a>
+                  {p.comprobanteUrl && <EnlaceComprobante pedidoId={p.id} ruta={p.comprobanteUrl} />}
+                  {!MODO_DEMO && p.origen !== 'servidor' && (
+                    <p className="mt-2 rounded-lg bg-ambar-fondo p-2 font-semibold text-ambar" role="note">
+                      Total calculado en el navegador del cliente: compara el monto transferido
+                      con los precios de cada ítem antes de marcarlo como pagado.
+                    </p>
+                  )}
+                  {p.stockInsuficiente && (
+                    <p className="mt-2 font-semibold text-oferta" role="alert">
+                      No había stock suficiente al confirmar el pago: revisa existencias antes de despachar.
+                    </p>
                   )}
                 </div>
               </div>

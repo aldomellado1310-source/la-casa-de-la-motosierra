@@ -6,8 +6,8 @@ import './index.css';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    {/* Opciones de React Router v7 activadas desde ya (evita avisos en consola) */}
-    <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+    {/* React Router v7: startTransition y relativeSplatPath ya son el comportamiento por defecto */}
+    <BrowserRouter>
       <App />
     </BrowserRouter>
   </StrictMode>,

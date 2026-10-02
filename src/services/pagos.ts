@@ -16,6 +16,12 @@ export const DATOS_TRANSFERENCIA = {
   email: 'lacasadelamotosierraaysenspa@gmail.com',
 };
 
+/** Mensaje de error del servidor (JSON { error }) o uno genérico */
+async function mensajeError(res: Response, generico: string): Promise<string> {
+  const datos = (await res.json().catch(() => ({}))) as { error?: unknown };
+  return typeof datos.error === 'string' && datos.error ? datos.error : generico;
+}
+
 interface RespuestaWebpay {
   url: string;   // URL del formulario Webpay
   token: string; // token_ws
@@ -26,28 +32,27 @@ interface RespuestaWebpay {
  * La Cloud Function crea la transacción con el SDK de Transbank
  * y devuelve la URL + token para redirigir al formulario de pago.
  * El monto lo lee la función desde el pedido en Firestore (el valor
- * del navegador no es confiable).
+ * del navegador no es confiable) y la URL de retorno la arma el servidor
+ * desde su lista blanca de orígenes.
  */
 export async function iniciarPagoWebpay(pedidoId: string): Promise<RespuestaWebpay> {
-  if (MODO_DEMO || !FUNCTIONS_URL) {
+  if (MODO_DEMO) {
     // En demo simulamos la redirección al retorno exitoso
     return { url: `${window.location.origin}/pago/retorno`, token: `demo-${pedidoId}` };
   }
+  if (!FUNCTIONS_URL) throw new Error('El pago en línea no está disponible por ahora. Elige transferencia bancaria.');
   const res = await fetch(`${FUNCTIONS_URL}/webpayCrear`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      pedidoId,
-      returnUrl: `${window.location.origin}/pago/retorno`,
-    }),
+    body: JSON.stringify({ pedidoId }),
   });
-  if (!res.ok) throw new Error('No se pudo iniciar el pago con Webpay');
+  if (!res.ok) throw new Error(await mensajeError(res, 'No se pudo iniciar el pago con Webpay. Inténtalo de nuevo.'));
   return res.json() as Promise<RespuestaWebpay>;
 }
 
 /** Redirige al formulario de Webpay (POST con token_ws) */
 export function redirigirAWebpay(respuesta: RespuestaWebpay): void {
-  if (respuesta.token.startsWith('demo-')) {
+  if (MODO_DEMO && respuesta.token.startsWith('demo-')) {
     // Modo demo: vamos directo a la página de retorno
     window.location.href = `${respuesta.url}?token_ws=${respuesta.token}`;
     return;
@@ -77,7 +82,7 @@ export interface ResultadoCommitWebpay {
  * el stock; en demo lo hacemos aquí sobre los datos en memoria.
  */
 export async function confirmarPagoWebpay(tokenWs: string): Promise<ResultadoCommitWebpay> {
-  if (tokenWs.startsWith('demo-')) {
+  if (MODO_DEMO && tokenWs.startsWith('demo-')) {
     const pedidoId = tokenWs.replace('demo-', '');
     await actualizarEstadoPedido(pedidoId, 'pagado', 'DEMO-OK');
     await descontarStockPedido(pedidoId);
@@ -94,23 +99,20 @@ export async function confirmarPagoWebpay(tokenWs: string): Promise<ResultadoCom
 
 /**
  * Crea una preferencia de Mercado Pago y devuelve la URL de checkout
- * (init_point) para redirigir al usuario. El monto lo lee la función
- * desde el pedido en Firestore.
+ * (init_point) para redirigir al usuario. El monto, la descripción y
+ * las URLs de retorno los arma la función desde el pedido en Firestore.
  */
-export async function iniciarPagoMercadoPago(pedidoId: string, descripcion: string): Promise<string> {
-  if (MODO_DEMO || !FUNCTIONS_URL) {
+export async function iniciarPagoMercadoPago(pedidoId: string): Promise<string> {
+  if (MODO_DEMO) {
     return `${window.location.origin}/pago/retorno?mp=demo&pedido=${pedidoId}`;
   }
+  if (!FUNCTIONS_URL) throw new Error('El pago en línea no está disponible por ahora. Elige transferencia bancaria.');
   const res = await fetch(`${FUNCTIONS_URL}/mercadoPagoCrear`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      pedidoId,
-      descripcion,
-      backUrl: `${window.location.origin}/pago/retorno`,
-    }),
+    body: JSON.stringify({ pedidoId }),
   });
-  if (!res.ok) throw new Error('No se pudo iniciar el pago con Mercado Pago');
+  if (!res.ok) throw new Error(await mensajeError(res, 'No se pudo iniciar el pago con Mercado Pago. Inténtalo de nuevo.'));
   const datos = (await res.json()) as { initPoint: string };
   return datos.initPoint;
 }
@@ -121,7 +123,7 @@ export async function iniciarPagoMercadoPago(pedidoId: string, descripcion: stri
  * verdad: cualquiera podría forjarla con status=approved.
  */
 export async function confirmarPagoMercadoPago(pedidoId: string, paymentId: string): Promise<boolean> {
-  if (MODO_DEMO || !FUNCTIONS_URL) {
+  if (MODO_DEMO) {
     await actualizarEstadoPedido(pedidoId, 'pagado', 'MP-DEMO');
     await descontarStockPedido(pedidoId);
     return true;

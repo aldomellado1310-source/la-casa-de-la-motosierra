@@ -20,18 +20,26 @@ service firebase.storage {
     }
 
     // Comprobantes de transferencia: sube cualquiera con el número-token
-    // del pedido (invitados incluidos), pero solo imagen o PDF.
+    // del pedido (invitados incluidos), pero SOLO mientras el pedido existe
+    // y está 'pendiente_pago' (CN-008: evita subidas anónimas ilimitadas).
+    // El frontend sube el archivo ANTES de pasar el pedido a
+    // 'pendiente_validacion' (services/pedidos.ts → subirComprobante).
+    // Solo create: no se sobrescriben ni borran comprobantes ya subidos.
     // Lectura SOLO admin: contienen datos bancarios personales de clientes.
     match /comprobantes/{pedidoId}/{archivo} {
-      allow create: if request.resource.size < 10 * 1024 * 1024
-        && request.resource.contentType.matches('image/.*|application/pdf');
+      allow create: if request.resource.size < 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/(jpeg|png|webp|heic)|application/pdf')
+        && firestore.exists(/databases/(default)/documents/pedidos/$(pedidoId))
+        && firestore.get(/databases/(default)/documents/pedidos/$(pedidoId)).data.estado == 'pendiente_pago';
       allow read: if esAdmin();
     }
 
-    // PDFs de cotización: los genera la Cloud Function (Admin SDK);
-    // se leen mediante URL firmada
+    // PDFs de cotización: los genera la Cloud Function (Admin SDK) y se
+    // entregan por URL firmada, que no pasa por estas reglas. Lectura con
+    // el SDK cliente SOLO admin (CN-009: los folios COT-AAAA-NNNN son
+    // correlativos y cualquier usuario autenticado podía enumerarlos).
     match /cotizaciones/{archivo} {
-      allow read: if request.auth != null;
+      allow read: if esAdmin();
       allow write: if false;
     }
   }
