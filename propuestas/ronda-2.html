@@ -1,0 +1,493 @@
+<!doctype html>
+<html lang="es-CL">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Propuestas ronda 2 · La Casa de la Motosierra</title>
+<!-- Página de revisión interna (solo dev): no forma parte del build. -->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --carbon: #0E0F0E; --grafito: #1C1D1C; --gris: #51554F; --borde: #DCDFDB; --fondo: #F2F3F1;
+    --naranja: #EE8100; --naranja-oscuro: #AD5C00; --naranja-suave: #FFF1E0;
+    --verde: #1C6B34; --verde-oscuro: #124724; --verde-badge: #E5F2E8;
+    --ambar: #7A5800; --oferta: #C8261B; --wsp: #1FA855;
+    --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: 'Barlow', system-ui, sans-serif; background: #2A2C2A; color: #fff; }
+  button, input { font: inherit; }
+  .display { font-family: 'Barlow Condensed', sans-serif; font-weight: 800; text-transform: uppercase; }
+  .riel { display: flex; overflow-x: auto; scrollbar-width: none; }
+  .riel::-webkit-scrollbar { display: none; }
+  .logo { display: flex; flex-direction: column; line-height: 1; }
+  .logo .l1 { font-family: 'Barlow Condensed'; font-weight: 700; font-size: 12px; letter-spacing: 0.2em; }
+  .logo .barra { height: 3px; background: var(--naranja); margin: 3px 0; }
+  .logo .l2 { font-family: 'Barlow Condensed'; font-weight: 800; font-size: 22px; }
+
+  /* ── Marco de revisión ─────────────────────────── */
+  .barra-rev { position: sticky; top: 0; z-index: 10; background: #1A1B1A; border-bottom: 1px solid #3A3C3A; padding: 12px 16px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; }
+  .barra-rev h1 { margin: 0; font-size: 20px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .barra-rev h1 a { font-size: 16px; color: #FFB35C; font-weight: 600; }
+  .selector { display: flex; gap: 6px; flex-wrap: wrap; }
+  .selector button { min-height: 44px; padding: 0 16px; border-radius: 999px; border: 2px solid #4A4C4A; background: transparent; color: #fff; font-weight: 700; font-size: 16px; cursor: pointer; }
+  .selector button[aria-pressed="true"] { background: var(--naranja); border-color: var(--naranja); color: var(--carbon); }
+  .escenario { display: flex; gap: 40px; justify-content: center; align-items: flex-start; padding: 28px 16px 60px; flex-wrap: wrap; }
+  .columna { display: flex; flex-direction: column; gap: 12px; width: 390px; max-width: 100%; }
+  .columna header h2 { margin: 0; font-size: 22px; }
+  .columna header p { margin: 4px 0 0; color: #B9BDB8; font-size: 16px; line-height: 1.4; }
+  .telefono { width: 390px; max-width: 100%; height: 844px; border-radius: 36px; border: 10px solid #0A0A0A; overflow: hidden; position: relative; background: #fff; box-shadow: 0 8px 8px rgb(0 0 0 / 0.25); }
+  .pantalla { position: absolute; inset: 0; overflow-y: auto; overflow-x: hidden; scrollbar-width: none; }
+  .pantalla::-webkit-scrollbar { display: none; }
+  .escenario[data-ver]:not([data-ver="todas"]) .columna { display: none; }
+  .escenario[data-ver="d"] .columna[data-p="d"], .escenario[data-ver="e"] .columna[data-p="e"], .escenario[data-ver="f"] .columna[data-p="f"] { display: flex; }
+  @media (max-width: 700px) {
+    .escenario { padding: 0; gap: 0; }
+    .columna { width: 100%; }
+    .columna header { padding: 16px; }
+    .telefono { width: 100%; height: auto; min-height: 100vh; border: 0; border-radius: 0; box-shadow: none; }
+    .pantalla { position: relative; overflow: visible; }
+    .fija-abajo { position: fixed !important; }
+    .selector button[data-ver="todas"] { display: none; }
+  }
+
+  /* ── D · Foto de Aysén ─────────────────────────── */
+  .d { background: var(--carbon); color: #fff; padding-bottom: 110px; }
+  .d-hero { position: relative; height: 520px; display: flex; flex-direction: column; justify-content: space-between; padding: 16px; overflow: hidden; }
+  .d-hero img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transform-origin: 60% 40%; animation: acercar 20s ease-out both; }
+  @keyframes acercar { from { transform: scale(1.15); } to { transform: scale(1); } }
+  .d-hero::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgb(14 15 14 / 0.55) 0%, rgb(14 15 14 / 0.1) 35%, rgb(14 15 14 / 0.85) 100%); }
+  .d-hero > * { position: relative; z-index: 1; }
+  .d-hero h2 { margin: 0 0 40px; font-size: 54px; line-height: 0.9; }
+  .d-hero h2 span { color: var(--naranja); }
+  .d-sello { display: inline-flex; align-items: center; gap: 8px; border: 2px solid rgb(255 255 255 / 0.6); border-radius: 999px; padding: 6px 12px; font-weight: 700; font-size: 15px; margin-bottom: 12px; }
+  .d-hoja { position: relative; z-index: 2; margin-top: -32px; background: #fff; color: var(--carbon); border-radius: 28px 28px 0 0; padding: 12px 16px 24px; display: flex; flex-direction: column; gap: 14px; }
+  .d-asa { width: 44px; height: 5px; border-radius: 999px; background: var(--borde); align-self: center; }
+  .d-buscar { display: flex; align-items: center; gap: 12px; border: 2px solid var(--carbon); border-radius: 16px; min-height: 60px; padding: 0 16px; }
+  .d-buscar input { flex: 1; border: 0; outline: none; font-size: 19px; min-width: 0; }
+  .d-maquina { display: flex; align-items: center; gap: 14px; min-height: 76px; border-radius: 16px; background: var(--naranja); color: var(--carbon); padding: 0 16px; text-decoration: none; }
+  .d-maquina b { display: block; font-size: 20px; }
+  .d-maquina span { font-size: 16px; }
+  .d-sec { padding: 28px 16px 0; display: flex; flex-direction: column; gap: 14px; }
+  .d-sec h2 { margin: 0; font-size: 34px; line-height: 1; }
+  .d-cats { gap: 12px; margin: 0 -16px; padding: 0 16px; }
+  .d-cat { flex-shrink: 0; width: 150px; height: 200px; border-radius: 20px; overflow: hidden; position: relative; display: flex; flex-direction: column; justify-content: flex-end; padding: 14px; text-decoration: none; color: #fff; }
+  .d-cat img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .d-cat::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 30%, rgb(14 15 14 / 0.9)); }
+  .d-cat .ico { position: absolute; top: 12px; left: 12px; z-index: 1; width: 44px; height: 44px; border-radius: 12px; background: var(--naranja); display: flex; align-items: center; justify-content: center; }
+  .d-cat b { position: relative; z-index: 1; font-size: 22px; line-height: 1; }
+  .d-cat small { position: relative; z-index: 1; font-size: 15px; opacity: 0.85; margin-top: 4px; }
+  .d-lista { display: flex; flex-direction: column; gap: 1px; background: #2A2C2A; border-radius: 18px; overflow: hidden; }
+  .d-item { display: flex; align-items: center; gap: 14px; background: #1A1B1A; padding: 14px; }
+  .d-item .foto { width: 72px; height: 72px; border-radius: 14px; background: #2A2C2A; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .d-item .n { display: block; font-weight: 700; font-size: 18px; line-height: 1.2; }
+  .d-item .s { font-size: 15px; font-weight: 600; }
+  .d-item .p { display: block; font-family: 'Barlow Condensed'; font-weight: 800; font-size: 28px; color: var(--naranja); }
+  .d-add { width: 56px; height: 56px; border-radius: 16px; border: 0; background: #fff; color: var(--carbon); flex-shrink: 0; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 150ms, transform 150ms var(--ease); }
+  .d-add:active { transform: scale(0.92); }
+  .d-add.ok { background: var(--verde); color: #fff; }
+  .d-cita { margin: 32px 16px 0; padding: 24px 20px; border-radius: 22px; background: var(--naranja); color: var(--carbon); display: flex; flex-direction: column; gap: 14px; }
+  .d-cita p { margin: 0; }
+  .d-dato { display: flex; gap: 10px; align-items: flex-start; font-size: 17px; font-weight: 600; }
+  .d-nav { position: absolute; left: 0; right: 0; bottom: 0; background: #0A0B0A; border-top: 1px solid #2A2C2A; display: flex; height: 76px; z-index: 5; }
+  .d-nav a { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; text-decoration: none; font-size: 14px; font-weight: 700; color: #9DA19B; }
+  .d-nav a[aria-current="page"] { color: #fff; }
+  .d-nav a[aria-current="page"] svg { stroke: var(--naranja); }
+
+  /* ── E · Conversación ──────────────────────────── */
+  .e { background: #E9ECE7; color: var(--grafito); min-height: 100%; display: flex; flex-direction: column; }
+  .e-top { position: sticky; top: 0; z-index: 3; background: var(--verde-oscuro); color: #fff; padding: 12px 14px; display: flex; align-items: center; gap: 12px; }
+  .e-avatar { width: 48px; height: 48px; border-radius: 999px; background: var(--naranja); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .e-top b { display: block; font-size: 18px; }
+  .e-top small { font-size: 15px; color: #CFE6D5; display: flex; align-items: center; gap: 6px; }
+  .e-top small i { width: 9px; height: 9px; border-radius: 999px; background: #7CD69A; }
+  .e-llamar { margin-left: auto; min-height: 44px; padding: 0 14px; border-radius: 999px; border: 2px solid rgb(255 255 255 / 0.5); color: #fff; font-weight: 700; font-size: 16px; text-decoration: none; display: flex; align-items: center; gap: 6px; }
+  .e-chat { flex: 1; padding: 16px 12px 150px; display: flex; flex-direction: column; gap: 10px; }
+  .e-fecha { align-self: center; background: #fff; border-radius: 10px; padding: 4px 12px; font-size: 14px; color: var(--gris); font-weight: 600; }
+  .burbuja { max-width: 86%; padding: 12px 14px; border-radius: 18px; font-size: 18px; line-height: 1.4; animation: aparece 240ms var(--ease) both; }
+  @keyframes aparece { from { opacity: 0; transform: translateY(10px) scale(0.98); } to { opacity: 1; transform: none; } }
+  .tienda { align-self: flex-start; background: #fff; border-top-left-radius: 6px; }
+  .cliente { align-self: flex-end; background: #D6F0C8; border-top-right-radius: 6px; font-weight: 600; }
+  .e-respuestas { display: flex; flex-wrap: wrap; gap: 8px; animation: aparece 240ms var(--ease) 120ms both; }
+  .e-respuestas button { min-height: 52px; padding: 0 18px; border-radius: 999px; border: 2px solid var(--verde); background: #fff; color: var(--verde-oscuro); font-weight: 700; font-size: 17px; cursor: pointer; transition: background 150ms, color 150ms; }
+  .e-respuestas button:hover { background: var(--verde); color: #fff; }
+  .e-respuestas button.fuerte { background: var(--naranja); border-color: var(--naranja); color: var(--carbon); }
+  .escribiendo { align-self: flex-start; background: #fff; border-radius: 18px; border-top-left-radius: 6px; padding: 16px 18px; display: flex; gap: 6px; }
+  .escribiendo i { width: 9px; height: 9px; border-radius: 999px; background: var(--gris); animation: punto 1s infinite; }
+  .escribiendo i:nth-child(2) { animation-delay: 150ms; } .escribiendo i:nth-child(3) { animation-delay: 300ms; }
+  @keyframes punto { 0%,60%,100% { opacity: 0.3; transform: none; } 30% { opacity: 1; transform: translateY(-4px); } }
+  .e-productos { gap: 10px; margin: 0 -12px; padding: 2px 12px 4px; animation: aparece 240ms var(--ease) both; }
+  .e-prod { flex-shrink: 0; width: 200px; background: #fff; border-radius: 18px; overflow: hidden; display: flex; flex-direction: column; }
+  .e-prod .foto { height: 110px; background: var(--naranja-suave); display: flex; align-items: center; justify-content: center; }
+  .e-prod .info { padding: 12px; display: flex; flex-direction: column; gap: 4px; }
+  .e-prod .n { font-weight: 700; font-size: 17px; line-height: 1.2; min-height: 41px; }
+  .e-prod .p { font-family: 'Barlow Condensed'; font-weight: 800; font-size: 28px; }
+  .e-prod button { min-height: 48px; border-radius: 12px; border: 0; background: var(--naranja); color: var(--carbon); font-weight: 700; font-size: 17px; cursor: pointer; }
+  .e-prod button.ok { background: var(--verde); color: #fff; }
+  .e-redactor { position: absolute; left: 0; right: 0; bottom: 0; z-index: 5; background: #F7F8F6; padding: 10px 10px 14px; display: flex; flex-direction: column; gap: 8px; border-top: 1px solid var(--borde); }
+  .e-redactor .fila { display: flex; gap: 8px; align-items: center; }
+  .e-foto { min-height: 48px; padding: 0 14px; border-radius: 999px; border: 0; background: var(--wsp); color: #fff; font-weight: 700; font-size: 16px; display: flex; align-items: center; gap: 6px; cursor: pointer; white-space: nowrap; }
+  .e-campo { flex: 1; min-height: 52px; border-radius: 999px; border: 2px solid var(--borde); background: #fff; padding: 0 16px; font-size: 18px; outline: none; min-width: 0; }
+  .e-enviar { width: 52px; height: 52px; border-radius: 999px; border: 0; background: var(--verde); color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
+
+  /* ── F · Toca la pieza ─────────────────────────── */
+  .f { background: #fff; color: var(--grafito); padding-bottom: 96px; }
+  .f-top { padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--borde); }
+  .f-top .logo .l1, .f-top .logo .l2 { color: var(--carbon); }
+  .f-carro { position: relative; width: 52px; height: 52px; border-radius: 14px; border: 2px solid var(--borde); display: flex; align-items: center; justify-content: center; }
+  .f-carro span { position: absolute; top: -6px; right: -6px; min-width: 22px; height: 22px; border-radius: 999px; background: var(--naranja); color: var(--carbon); font-size: 13px; font-weight: 800; display: flex; align-items: center; justify-content: center; padding: 0 5px; }
+  .f-intro { padding: 18px 16px 0; }
+  .f-intro h2 { margin: 0; font-size: 40px; line-height: 0.95; }
+  .f-intro p { margin: 8px 0 0; font-size: 17px; color: var(--gris); }
+  .f-seg { margin: 16px 16px 0; display: grid; grid-template-columns: 1fr 1fr; background: var(--fondo); border-radius: 14px; padding: 4px; }
+  .f-seg button { min-height: 52px; border: 0; border-radius: 11px; background: transparent; font-weight: 700; font-size: 18px; color: var(--gris); cursor: pointer; transition: background 200ms var(--ease), color 200ms; }
+  .f-seg button[aria-pressed="true"] { background: var(--carbon); color: #fff; }
+  .f-lienzo { margin: 14px 16px 0; border-radius: 20px; border: 2px solid var(--borde); position: relative; background-color: #FBFBFA; background-image: radial-gradient(#DCDFDB 1px, transparent 1.2px); background-size: 16px 16px; aspect-ratio: 358 / 250; }
+  .f-lienzo svg.dibujo { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .f-punto { position: absolute; width: 44px; height: 44px; margin: -22px 0 0 -22px; z-index: 1; border-radius: 999px; border: 3px solid #fff; background: var(--naranja); color: var(--carbon); font-weight: 800; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgb(0 0 0 / 0.2); transition: transform 200ms var(--ease), background 200ms; }
+  .f-punto::before { content: ''; position: absolute; inset: -5px; border-radius: 999px; border: 3px solid var(--naranja); opacity: 0; animation: onda 2s ease-out infinite; }
+  .f-punto[aria-pressed="true"] { background: var(--carbon); color: #fff; transform: scale(1.15); }
+  .f-punto[aria-pressed="true"]::before { border-color: var(--carbon); }
+  @keyframes onda { 0% { opacity: 0.8; transform: scale(0.7); } 100% { opacity: 0; transform: scale(1.4); } }
+  .f-leyenda { margin: 14px 16px 0; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .f-leyenda button { min-height: 52px; border-radius: 12px; border: 2px solid var(--borde); background: #fff; display: flex; align-items: center; gap: 10px; padding: 0 12px; font-weight: 600; font-size: 16px; cursor: pointer; text-align: left; }
+  .f-leyenda button b { width: 28px; height: 28px; border-radius: 999px; background: var(--naranja-suave); color: var(--naranja-oscuro); display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0; }
+  .f-leyenda button[aria-pressed="true"] { border-color: var(--carbon); background: var(--carbon); color: #fff; }
+  .f-leyenda button[aria-pressed="true"] b { background: var(--naranja); color: var(--carbon); }
+  .f-ficha { margin: 16px 16px 0; border-radius: 20px; background: var(--carbon); color: #fff; padding: 18px; display: flex; flex-direction: column; gap: 12px; animation: sube 280ms var(--ease) both; }
+  @keyframes sube { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+  .f-ficha h3 { margin: 0; font-size: 34px; line-height: 1; }
+  .f-ficha p { margin: 0; font-size: 17px; color: #C9CCC7; line-height: 1.4; }
+  .f-fila { background: #1E201E; border-radius: 14px; padding: 10px; display: flex; gap: 12px; align-items: center; }
+  .f-fila .n { display: block; font-weight: 700; font-size: 17px; line-height: 1.2; }
+  .f-fila .p { font-family: 'Barlow Condensed'; font-weight: 800; font-size: 24px; color: var(--naranja); }
+  .f-fila button { margin-left: auto; min-height: 48px; padding: 0 16px; border-radius: 12px; border: 0; background: var(--naranja); color: var(--carbon); font-weight: 700; font-size: 16px; cursor: pointer; flex-shrink: 0; }
+  .f-ver { min-height: 56px; border-radius: 14px; background: #fff; color: var(--carbon); font-weight: 800; font-size: 18px; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 8px; }
+  .f-ayuda { margin: 16px 16px 0; border-radius: 16px; border: 2px dashed var(--borde); padding: 16px; display: flex; gap: 12px; align-items: center; font-size: 17px; }
+  .f-nav { position: absolute; left: 0; right: 0; bottom: 0; background: #fff; border-top: 1px solid var(--borde); display: flex; height: 72px; z-index: 5; }
+  .f-nav a { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-decoration: none; font-size: 14px; font-weight: 700; color: var(--gris); position: relative; }
+  .f-nav a[aria-current="page"] { color: var(--carbon); }
+  .f-nav a[aria-current="page"]::before { content: ''; position: absolute; top: 0; left: 22%; right: 22%; height: 4px; border-radius: 0 0 4px 4px; background: var(--naranja); }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="barra-rev">
+  <h1>Propuestas · ronda 2 <a href="./">← Ver ronda 1 (A, B, C)</a></h1>
+  <div class="selector" role="group" aria-label="Qué propuesta ver">
+    <button data-ver="todas" aria-pressed="true">Las tres</button>
+    <button data-ver="d" aria-pressed="false">D · Foto de Aysén</button>
+    <button data-ver="e" aria-pressed="false">E · Conversación</button>
+    <button data-ver="f" aria-pressed="false">F · Toca la pieza</button>
+  </div>
+</div>
+
+<main class="escenario" id="escenario" data-ver="todas">
+
+  <!-- ═════════ D ═════════ -->
+  <section class="columna" data-p="d">
+    <header>
+      <h2>D · Foto de Aysén</h2>
+      <p>Inmersiva y emocional: la foto manda, el buscador sube como hoja, listas grandes en vez de grillas y orgullo local.</p>
+    </header>
+    <div class="telefono"><div class="pantalla" style="background: #0E0F0E">
+      <div class="d">
+        <div class="d-hero">
+          <img src="/hero.webp" alt="Puerto Aysén entre cerros y bosque" />
+          <div class="logo"><span class="l1">LA CASA DE LA</span><span class="barra"></span><span class="l2">MOTOSIERRA</span></div>
+          <div>
+            <span class="d-sello"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#EE8100" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-6-5.5-6-10a6 6 0 1 1 12 0c0 4.5-6 10-6 10z"/><circle cx="12" cy="11" r="2"/></svg>Puerto Aysén, Patagonia</span>
+            <h2 class="display">Repuestos para<br />el trabajo <span>duro</span></h2>
+          </div>
+        </div>
+        <div class="d-hoja">
+          <span class="d-asa" aria-hidden="true"></span>
+          <label class="d-buscar">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#0E0F0E" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+            <input aria-label="¿Qué repuesto buscas?" placeholder="¿Qué repuesto buscas?" />
+          </label>
+          <a class="d-maquina" href="#">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#0E0F0E" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 15h9l5-6h-6l-1.5 2H5z"/><circle cx="7" cy="18" r="1.6"/><circle cx="13" cy="18" r="1.6"/></svg>
+            <span style="flex:1"><b>Busca por tu máquina</b><span>Marca y modelo, y listo</span></span>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0E0F0E" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </a>
+        </div>
+
+        <div class="d-sec">
+          <h2 class="display">¿Qué necesitas?</h2>
+          <div class="riel d-cats" id="d-cats"></div>
+        </div>
+
+        <div class="d-sec">
+          <h2 class="display">Lo que más llevan</h2>
+          <div class="d-lista" id="d-lista"></div>
+        </div>
+
+        <div class="d-cita">
+          <p class="display" style="font-size: 30px; line-height: 1">“Economía para la gente de Aysén”</p>
+          <p style="font-size: 17px; line-height: 1.4">Somos una tienda de Puerto Aysén. Te atiende gente que arregla motosierras, no un call center.</p>
+          <div class="d-dato"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0E0F0E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-6-5.5-6-10a6 6 0 1 1 12 0c0 4.5-6 10-6 10z"/><circle cx="12" cy="11" r="2"/></svg>Teniente Merino 500, Puerto Aysén</div>
+          <div class="d-dato"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0E0F0E" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Lun a Vie 9:00–18:30 · Sáb 9:30–13:30</div>
+          <a href="#" style="min-height: 56px; border-radius: 14px; background: #0E0F0E; color: #fff; font-weight: 700; font-size: 18px; text-decoration: none; display: flex; align-items: center; justify-content: center">Cómo llegar a la tienda</a>
+        </div>
+      </div>
+    </div>
+    <nav class="d-nav fija-abajo" aria-label="Navegación">
+      <a href="#" aria-current="page"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5L12 3l9 7.5"/><path d="M5.5 9v11h13V9"/></svg>Inicio</a>
+      <a href="#"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2.5l8.2 4.75v9.5L12 21.5l-8.2-4.75v-9.5z"/><circle cx="12" cy="12" r="3.2"/></svg>Repuestos</a>
+      <a href="#"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3"/></svg>Mi máquina</a>
+      <a href="#"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="20" r="1.5"/><circle cx="17" cy="20" r="1.5"/><path d="M3 4h2l2.5 11h10L20 8H6"/></svg>Carrito</a>
+      <a href="#"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>Menú</a>
+    </nav></div>
+  </section>
+
+  <!-- ═════════ E ═════════ -->
+  <section class="columna" data-p="e">
+    <header>
+      <h2>E · Conversación</h2>
+      <p>La portada es un chat como WhatsApp: el canal que el cliente ya domina. Toca las respuestas: funciona.</p>
+    </header>
+    <div class="telefono"><div class="pantalla" id="e-pantalla">
+      <div class="e">
+        <div class="e-top">
+          <span class="e-avatar"><svg width="30" height="20" viewBox="0 0 64 40" aria-hidden="true"><rect x="2" y="21" width="40" height="6" rx="3" fill="#0E0F0E"/><path d="M36 14h16a6 6 0 0 1 6 6v8a4 4 0 0 1-4 4H38a4 4 0 0 1-4-4v-10a4 4 0 0 1 2-4z" fill="#0E0F0E"/><path d="M40 14v-6a3 3 0 0 1 3-3h9a3 3 0 0 1 3 3v6h-4V9h-7v5z" fill="#0E0F0E"/></svg></span>
+          <span><b>La Casa de la Motosierra</b><small><i></i>En línea · Puerto Aysén</small></span>
+          <a class="e-llamar" href="#"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h3.5l1.8 4.5-2.3 1.4a11 11 0 0 0 7.1 7.1l1.4-2.3L21 15.5V19a2 2 0 0 1-2 2A16 16 0 0 1 3 5a2 2 0 0 1 2-2z"/></svg>Llamar</a>
+        </div>
+        <div class="e-chat" id="e-chat"><span class="e-fecha">Hoy</span></div>
+      </div>
+    </div>
+    <div class="e-redactor fija-abajo">
+      <div class="fila">
+        <button class="e-foto"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h4l2-3h6l2 3h4v11H3z"/><circle cx="12" cy="13" r="3.5"/></svg>Enviar foto</button>
+        <input class="e-campo" id="e-campo" aria-label="Escribe tu mensaje" placeholder="Escribe aquí…" />
+        <button class="e-enviar" id="e-enviar" aria-label="Enviar"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l16-8-6 16-2.5-6.5z"/></svg></button>
+      </div>
+    </div></div>
+  </section>
+
+  <!-- ═════════ F ═════════ -->
+  <section class="columna" data-p="f">
+    <header>
+      <h2>F · Toca la pieza</h2>
+      <p>Para quien no sabe cómo se llama la pieza: toca en el dibujo de la máquina y aparecen los repuestos.</p>
+    </header>
+    <div class="telefono"><div class="pantalla">
+      <div class="f">
+        <div class="f-top">
+          <div class="logo"><span class="l1">LA CASA DE LA</span><span class="barra"></span><span class="l2">MOTOSIERRA</span></div>
+          <span class="f-carro" aria-label="Carrito"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#0E0F0E" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="20" r="1.5"/><circle cx="17" cy="20" r="1.5"/><path d="M3 4h2l2.5 11h10L20 8H6"/></svg><span id="f-cuenta">0</span></span>
+        </div>
+        <div class="f-intro">
+          <h2 class="display">¿Qué parte necesitas?</h2>
+          <p>Toca la parte en el dibujo, aunque no sepas cómo se llama.</p>
+        </div>
+        <div class="f-seg" role="group" aria-label="Tipo de máquina">
+          <button data-maq="motosierra" aria-pressed="true">Motosierra</button>
+          <button data-maq="desbrozadora" aria-pressed="false">Desbrozadora</button>
+        </div>
+        <div class="f-lienzo" id="f-lienzo"></div>
+        <div class="f-leyenda" id="f-leyenda"></div>
+        <div id="f-ficha"></div>
+        <div class="f-ayuda">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#1FA855" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M3 8h4l2-3h6l2 3h4v11H3z"/><circle cx="12" cy="13" r="3.5"/></svg>
+          <span>¿No la encuentras? <a href="#" style="color: var(--verde); font-weight: 700">Mándanos una foto por WhatsApp</a></span>
+        </div>
+      </div>
+    </div>
+    <nav class="f-nav fija-abajo" aria-label="Navegación">
+      <a href="#" aria-current="page">Inicio</a><a href="#">Repuestos</a><a href="#">Mi máquina</a><a href="#">Carrito</a><a href="#">Menú</a>
+    </nav></div>
+  </section>
+</main>
+
+<script>
+  const tuerca = (color, t) => `<svg width="${t}" height="${t}" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5l8.2 4.75v9.5L12 21.5l-8.2-4.75v-9.5z"/><circle cx="12" cy="12" r="3.2"/></svg>`;
+  const carrito = (c) => `<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="20" r="1.5"/><circle cx="17" cy="20" r="1.5"/><path d="M3 4h2l2.5 11h10L20 8H6"/></svg>`;
+  // Productos reales del catálogo importado
+  const PRODUCTOS = [
+    { n: 'Salvamano MS310-390-260', s: 'Quedan 1', p: '$20.000' },
+    { n: 'Aceite mezcla Anteros 125cc', s: 'En stock (76)', p: '$2.900' },
+    { n: 'Acelerador HQV61', s: 'En stock (8)', p: '$10.000' },
+    { n: 'Amortiguador 380-381 kit', s: 'Quedan 1', p: '$15.000' },
+  ];
+
+  // Selector
+  const escenario = document.getElementById('escenario');
+  const botones = document.querySelectorAll('.selector button');
+  const elegirVista = (v) => { escenario.dataset.ver = v; botones.forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.ver === v))); };
+  if (window.matchMedia('(max-width: 700px)').matches) elegirVista('d');
+  botones.forEach((b) => b.addEventListener('click', () => { elegirVista(b.dataset.ver); window.scrollTo(0, 0); }));
+
+  // ── D ──
+  (() => {
+    // Categorías con conteos reales del catálogo; la foto es el hero recortado (provisorio)
+    const cats = [['Espadas y cadenas', 61, '20% 60%'], ['Filtros y bujías', 44, '70% 40%'], ['Carburación', 110, '45% 80%'], ['Seguridad', 14, '90% 30%'], ['Aceites', 4, '10% 20%']];
+    document.getElementById('d-cats').innerHTML = cats.map(([n, c, pos]) => `
+      <a class="d-cat" href="#"><img src="/hero.webp" alt="" style="object-position:${pos}" /><span class="ico">${tuerca('#0E0F0E', 24)}</span><b class="display">${n}</b><small>${c} productos</small></a>`).join('');
+    const lista = document.getElementById('d-lista');
+    lista.innerHTML = PRODUCTOS.map((p) => `
+      <div class="d-item">
+        <span class="foto">${tuerca('#9DA19B', 34)}</span>
+        <span style="flex:1;min-width:0"><span class="n">${p.n}</span><span class="s" style="color:${p.s.startsWith('Quedan') ? '#E8B84A' : '#7CD69A'}">${p.s}</span><span class="p">${p.p}</span></span>
+        <button class="d-add" aria-label="Agregar ${p.n}">${carrito('#0E0F0E')}</button>
+      </div>`).join('');
+    lista.querySelectorAll('.d-add').forEach((b) => b.addEventListener('click', () => {
+      b.classList.add('ok');
+      b.innerHTML = '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+    }));
+  })();
+
+  // ── E ──
+  (() => {
+    const chat = document.getElementById('e-chat');
+    const pantalla = document.getElementById('e-pantalla');
+    const bajar = () => requestAnimationFrame(() => { pantalla.scrollTop = pantalla.scrollHeight; });
+    const agregar = (html) => { const d = document.createElement('div'); d.innerHTML = html; const n = d.firstElementChild; chat.appendChild(n); bajar(); return n; };
+    const quitarRespuestas = () => chat.querySelectorAll('.e-respuestas').forEach((x) => x.remove());
+    const tienda = (texto, respuestas, extra) => new Promise((ok) => {
+      const esc = agregar('<div class="escribiendo" aria-label="Escribiendo"><i></i><i></i><i></i></div>');
+      setTimeout(() => {
+        esc.remove();
+        agregar(`<div class="burbuja tienda">${texto}</div>`);
+        if (extra) agregar(extra);
+        if (respuestas) {
+          const r = agregar(`<div class="e-respuestas">${respuestas.map((x, i) => `<button class="${x[2] ? 'fuerte' : ''}" data-i="${i}">${x[0]}</button>`).join('')}</div>`);
+          r.querySelectorAll('button').forEach((b) => b.addEventListener('click', () => {
+            const [texto2, accion] = respuestas[+b.dataset.i];
+            quitarRespuestas();
+            agregar(`<div class="burbuja cliente">${texto2}</div>`);
+            accion();
+          }));
+        }
+        ok();
+      }, 900);
+    });
+    const productos = () => `<div class="riel e-productos">${PRODUCTOS.map((p) => `
+      <div class="e-prod"><span class="foto">${tuerca('#AD5C00', 44)}</span><span class="info"><span class="n">${p.n}</span><span class="p">${p.p}</span><button>Agregar</button></span></div>`).join('')}</div>`;
+    const conectar = () => chat.querySelectorAll('.e-prod button').forEach((b) => b.onclick = () => { b.classList.add('ok'); b.textContent = '✓ En tu carrito'; });
+
+    const inicio = () => tienda('Hola, bienvenido a La Casa de la Motosierra. ¿En qué te ayudo?', [
+      ['Busco un repuesto', buscar, true],
+      ['Mi máquina falla', falla],
+      ['¿Dónde están?', donde],
+      ['Hablar con una persona', persona],
+    ]);
+    const buscar = () => tienda('¿Para qué máquina es?', [
+      ['Motosierra', () => marca('motosierra')],
+      ['Desbrozadora', () => marca('desbrozadora')],
+    ]);
+    const marca = (tipo) => tienda(`¿De qué marca es tu ${tipo}?`, ['Stihl', 'Husqvarna', 'Honda', 'Castor', 'Otra'].map((m) => [m, () => modelo(m)]));
+    const modelo = (m) => m === 'Otra'
+      ? persona()
+      : tienda(`¿Sabes el modelo de tu ${m}? Está en una etiqueta del motor.`, [
+          ['Sí, te lo escribo', () => resultados(m)],
+          ['No sé, envío foto', () => tienda('Perfecto. Toca <b>“Enviar foto”</b> abajo y sácale una foto a la etiqueta o a la pieza.', [['Volver al inicio', inicio]])],
+          ['Mostrar todo', () => resultados(m)],
+        ]);
+    const resultados = (m) => tienda(`Estos repuestos le sirven a tu ${m}:`, [['Ver más repuestos', () => resultados(m)], ['Ir a pagar', () => tienda('Te llevo al carrito. El envío se calcula antes de pagar.', [['Volver al inicio', inicio]]), true]], productos()).then(conectar);
+    const falla = () => tienda('Tráela al taller o mándanos un video de cómo suena. Te decimos qué tiene y cuánto sale arreglarla.', [['Enviar video por WhatsApp', persona, true], ['Volver al inicio', inicio]]);
+    const donde = () => tienda('Estamos en <b>Teniente Merino 500, Puerto Aysén</b>.<br>Lun a Vie 9:00–18:30 · Sáb 9:30–13:30.<br>Retiro gratis en tienda.', [['Cómo llegar', inicio], ['Volver al inicio', inicio]]);
+    const persona = () => tienda('Te conecto con alguien de la tienda por WhatsApp. Responde gente de verdad.', [['Abrir WhatsApp', inicio, true], ['Volver al inicio', inicio]]);
+
+    const campo = document.getElementById('e-campo');
+    const enviar = () => {
+      const t = campo.value.trim(); if (!t) return;
+      campo.value = ''; quitarRespuestas();
+      agregar(`<div class="burbuja cliente"></div>`).textContent = t;
+      tienda(`Busqué “${t.replace(/</g, '&lt;')}” en la tienda. Esto encontré:`, [['Volver al inicio', inicio]], productos()).then(conectar);
+    };
+    document.getElementById('e-enviar').addEventListener('click', enviar);
+    campo.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') enviar(); });
+    inicio();
+  })();
+
+  // ── F ──
+  (() => {
+    // Dibujo técnico simple (geometría limpia) + puntos por pieza, en % del lienzo
+    const MAQUINAS = {
+      motosierra: {
+        svg: `<svg class="dibujo" viewBox="0 0 358 250" fill="none" stroke="#1C1D1C" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true">
+          <rect x="8" y="140" width="196" height="34" rx="17" fill="#fff"/>
+          <rect x="15" y="147" width="182" height="20" rx="10" stroke-dasharray="7 5" stroke="#AD5C00"/>
+          <path d="M206 88V50a16 16 0 0 1 16-16h78a16 16 0 0 1 16 16v38h-18V54h-76v34z" fill="#fff"/>
+          <path d="M186 88h122a36 36 0 0 1 36 36v54a36 36 0 0 1-36 36H200a28 28 0 0 1-28-28v-70a28 28 0 0 1 14-28z" fill="#FFF1E0"/>
+          <rect x="222" y="100" width="76" height="42" rx="8" fill="#fff"/>
+          <path d="M234 112h52M234 121h52M234 130h52" stroke-width="1.6"/>
+          <rect x="304" y="96" width="36" height="18" rx="5" fill="#fff"/>
+          <path d="M340 105h10" stroke-width="3"/>
+          <rect x="230" y="160" width="48" height="32" rx="6" fill="#fff"/>
+          <circle cx="315" cy="176" r="19" fill="#fff"/>
+          <circle cx="315" cy="176" r="6"/>
+          <path d="M184 206c-18 10-16 30 4 34" stroke-width="3"/>
+        </svg>`,
+        piezas: [
+          { n: 'Cadena', x: 13, y: 63, cat: 'Espadas y cadenas', c: 61, d: 'La que corta. Se estira y pierde filo con el uso.' },
+          { n: 'Espada', x: 42, y: 63, cat: 'Espadas y cadenas', c: 61, d: 'La barra larga por donde gira la cadena.' },
+          { n: 'Filtro de aire', x: 72, y: 48, cat: 'Filtros y bujías', c: 44, d: 'Bajo la tapa. Si está sucio, la máquina pierde fuerza.' },
+          { n: 'Bujía', x: 90, y: 42, cat: 'Filtros y bujías', c: 44, d: 'Da la chispa. Si no parte, revisa primero la bujía.' },
+          { n: 'Carburador', x: 71, y: 70, cat: 'Carburación y arranque', c: 110, d: 'Mezcla el combustible con aire. Se tapa si queda bencina vieja.' },
+          { n: 'Arranque', x: 88, y: 71, cat: 'Carburación y arranque', c: 110, d: 'La piola y el resorte con que se hace partir.' },
+        ],
+      },
+      desbrozadora: {
+        svg: `<svg class="dibujo" viewBox="0 0 358 250" fill="none" stroke="#1C1D1C" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true">
+          <path d="M62 200L226 118" stroke-width="9"/>
+          <path d="M140 160l-16-34M112 126h40" stroke-width="4"/>
+          <path d="M86 182a44 44 0 0 1 30 26" stroke-width="4"/>
+          <circle cx="50" cy="208" r="28" fill="#FFF1E0"/>
+          <circle cx="50" cy="208" r="8"/>
+          <path d="M22 214l-16 6M78 200l16-6" stroke="#AD5C00" stroke-width="3"/>
+          <rect x="222" y="26" width="126" height="130" rx="22" fill="#FFF1E0"/>
+          <rect x="234" y="44" width="54" height="40" rx="6" fill="#fff"/>
+          <path d="M242 56h38M242 64h38M242 72h38" stroke-width="1.6"/>
+          <rect x="310" y="40" width="30" height="16" rx="4" fill="#fff"/>
+          <circle cx="300" cy="124" r="18" fill="#fff"/>
+          <circle cx="300" cy="124" r="6"/>
+        </svg>`,
+        piezas: [
+          { n: 'Hilo / cabezal', x: 14, y: 83, cat: 'Repuestos varios', c: 219, d: 'Donde va el hilo o nylon que corta el pasto.' },
+          { n: 'Protector', x: 29, y: 70, cat: 'Herramientas y seguridad', c: 14, d: 'La tapa que te protege de piedras y pasto.' },
+          { n: 'Manillar', x: 38, y: 50, cat: 'Repuestos varios', c: 219, d: 'Las manillas y el gatillo del acelerador.' },
+          { n: 'Filtro de aire', x: 73, y: 26, cat: 'Filtros y bujías', c: 44, d: 'Bajo la tapa del motor. Límpialo seguido.' },
+          { n: 'Bujía', x: 91, y: 19, cat: 'Filtros y bujías', c: 44, d: 'Da la chispa para que parta.' },
+          { n: 'Arranque', x: 84, y: 50, cat: 'Carburación y arranque', c: 110, d: 'La piola con que se hace partir.' },
+        ],
+      },
+    };
+    const e = { maq: 'motosierra', pieza: 0, carro: 0 };
+    const lienzo = document.getElementById('f-lienzo');
+    const leyenda = document.getElementById('f-leyenda');
+    const ficha = document.getElementById('f-ficha');
+    const pintar = () => {
+      const m = MAQUINAS[e.maq];
+      lienzo.innerHTML = m.svg + m.piezas.map((p, i) => `<button class="f-punto" style="left:${p.x}%;top:${p.y}%" aria-pressed="${i === e.pieza}" aria-label="${p.n}" data-i="${i}">${i + 1}</button>`).join('');
+      leyenda.innerHTML = m.piezas.map((p, i) => `<button aria-pressed="${i === e.pieza}" data-i="${i}"><b>${i + 1}</b>${p.n}</button>`).join('');
+      const p = m.piezas[e.pieza];
+      ficha.innerHTML = `<div class="f-ficha" key="${e.maq}${e.pieza}">
+        <h3 class="display">${p.n}</h3>
+        <p>${p.d}</p>
+        ${PRODUCTOS.slice(0, 2).map((x) => `<div class="f-fila"><span class="foto" style="width:56px;height:56px;border-radius:12px;background:#2A2C2A;display:flex;align-items:center;justify-content:center;flex-shrink:0">${tuerca('#9DA19B', 28)}</span><span style="min-width:0"><span class="n">${x.n}</span><span class="p">${x.p}</span></span><button>Agregar</button></div>`).join('')}
+        <a class="f-ver" href="#">Ver los ${p.c} de ${p.cat.toLowerCase()} <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0E0F0E" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+      </div>`;
+      document.querySelectorAll('.f-punto, .f-leyenda button').forEach((b) => b.addEventListener('click', () => { e.pieza = +b.dataset.i; pintar(); }));
+      ficha.querySelectorAll('.f-fila button').forEach((b) => b.addEventListener('click', () => {
+        e.carro += 1; document.getElementById('f-cuenta').textContent = e.carro; b.textContent = '✓'; b.style.background = '#1C6B34'; b.style.color = '#fff';
+      }));
+    };
+    document.querySelectorAll('[data-maq]').forEach((b) => b.addEventListener('click', () => {
+      e.maq = b.dataset.maq; e.pieza = 0;
+      document.querySelectorAll('[data-maq]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+      pintar();
+    }));
+    pintar();
+  })();
+</script>
+</body>
+</html>

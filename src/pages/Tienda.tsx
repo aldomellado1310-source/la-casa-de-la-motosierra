@@ -1,19 +1,59 @@
-﻿// ============================================================
-// Tienda: grilla de productos con filtros laterales
-// (categoría, marca/modelo compatible, disponibilidad),
-// búsqueda de texto y paginación.
+// ============================================================
+// Tienda: título claro de lo que se está viendo, filtro por
+// máquina arriba, filtros (categoría, disponibilidad) en panel
+// lateral — en móvil tras un botón "Filtrar" rotulado —, grilla
+// y paginación simple "Anterior / Página X de Y / Siguiente".
 // ============================================================
 import { useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import BuscadorCompatibilidad from '../components/BuscadorCompatibilidad';
 import EstadoError from '../components/EstadoError';
 import TarjetaProducto from '../components/TarjetaProducto';
+import { IconoFiltro, IconoFlecha, IconoWhatsApp } from '../components/Iconos';
+import { enlaceWhatsApp } from '../config/tienda';
 import { obtenerCategorias, obtenerProductos } from '../services/productos';
 import { enOferta, estadoStock } from '../utils/precio';
 import { useSeo } from '../utils/seo';
 import type { Categoria, Producto } from '../types';
 
 const POR_PAGINA = 12;
+
+/** Chip de filtro activo con "✕" visible y texto para lector de pantalla */
+function ChipFiltro({ children, alQuitar }: { children: React.ReactNode; alQuitar: () => void }) {
+  return (
+    <button
+      onClick={alQuitar}
+      className="flex min-h-[44px] items-center gap-2 rounded-full border-2 border-carbon bg-naranja-suave pl-4 pr-3 text-base font-bold text-carbon transition-colors hover:bg-naranja"
+    >
+      {children}
+      <span aria-hidden="true" className="flex h-6 w-6 items-center justify-center rounded-full bg-grafito text-sm text-white">✕</span>
+      <span className="sr-only">(quitar filtro)</span>
+    </button>
+  );
+}
+
+/** Opción de lista de filtros: fila grande, marcada con check y color */
+function OpcionFiltro({ activa, children, onClick }: { activa: boolean; children: React.ReactNode; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      aria-pressed={activa}
+      className={`flex min-h-[48px] w-full items-center gap-3 rounded-[10px] px-3 text-left text-base transition-colors ${
+        activa ? 'bg-carbon font-bold text-white' : 'text-grafito hover:bg-gris-fondo'
+      }`}
+    >
+      <span
+        aria-hidden="true"
+        className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${
+          activa ? 'border-naranja bg-naranja' : 'border-gris-600'
+        }`}
+      >
+        {activa && <span className="h-2 w-2 rounded-full bg-carbon" />}
+      </span>
+      {children}
+    </button>
+  );
+}
 
 export default function Tienda() {
   useSeo({
@@ -35,7 +75,7 @@ export default function Tienda() {
   const modelo = params.get('modelo') ?? '';
   const soloDisponibles = params.get('disp') === '1';
   const soloOfertas = params.get('ofertas') === '1';
-  const pagina = Math.max(1, parseInt(params.get('pagina') ?? '1', 10));
+  const pagina = Math.max(1, parseInt(params.get('pagina') ?? '1', 10) || 1);
 
   const cargar = () => {
     setCargando(true);
@@ -90,6 +130,14 @@ export default function Tienda() {
     setParams(nuevos);
   };
 
+  const quitarMaquina = () => {
+    const nuevos = new URLSearchParams(params);
+    nuevos.delete('marca');
+    nuevos.delete('modelo');
+    nuevos.delete('pagina');
+    setParams(nuevos);
+  };
+
   const irAPagina = (n: number) => {
     const nuevos = new URLSearchParams(params);
     nuevos.set('pagina', String(n));
@@ -97,162 +145,153 @@ export default function Tienda() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const nombreCategoria = categorias.find((c) => c.id === categoria)?.nombre ?? categoria;
+  // Título: dice en palabras qué se está viendo
+  const titulo = q
+    ? `Resultados para “${q}”`
+    : soloOfertas
+      ? 'Ofertas'
+      : categoria
+        ? nombreCategoria
+        : marca
+          ? `Repuestos para ${marca}${modelo ? ` ${modelo}` : ''}`
+          : 'Todos los repuestos';
+
+  const filtrosLaterales = (categoria ? 1 : 0) + (soloDisponibles ? 1 : 0) + (soloOfertas ? 1 : 0);
+  const hayFiltros = Boolean(marca || q || categoria || soloDisponibles || soloOfertas);
+
   return (
-    <div className="mx-auto max-w-7xl px-4 py-6">
-      {/* Buscador de compatibilidad compacto */}
-      <div className="tarjeta mb-6">
-        <p className="mb-2 text-sm font-bold text-verde">Filtrar por tu máquina</p>
+    <div className="contenedor py-6 sm:py-8">
+      <h1 className="titulo-seccion">{titulo}</h1>
+      <p className="mt-2 text-base text-gris-600" aria-live="polite">
+        {cargando ? 'Cargando catálogo…' : error ? '' : `${filtrados.length} producto${filtrados.length === 1 ? '' : 's'} · Precios con IVA incluido`}
+      </p>
+
+      {/* Filtro por máquina */}
+      <div className="mt-5 rounded-[22px] border-2 border-carbon bg-naranja-suave p-4 sm:p-5">
+        <p className="mb-3 text-lg font-bold">¿Para qué máquina es?</p>
         <BuscadorCompatibilidad compacto marcaInicial={marca} modeloInicial={modelo} />
       </div>
 
-      {/* Chips de filtros activos */}
-      {(marca || q || categoria || soloDisponibles || soloOfertas) && (
-        <div className="mb-4 flex flex-wrap items-center gap-2 text-sm">
-          <span className="text-gris-600">Filtros:</span>
-          {q && (
-            <button onClick={() => setFiltro('q', '')} className="rounded-full bg-verde px-3 py-1 text-white">
-              “{q}” ✕
-            </button>
-          )}
-          {categoria && (
-            <button onClick={() => setFiltro('categoria', '')} className="rounded-full bg-verde px-3 py-1 text-white">
-              {categorias.find((c) => c.id === categoria)?.nombre ?? categoria} ✕
-            </button>
-          )}
-          {marca && (
-            <button
-              onClick={() => {
-                const nuevos = new URLSearchParams(params);
-                nuevos.delete('marca');
-                nuevos.delete('modelo');
-                nuevos.delete('pagina');
-                setParams(nuevos);
-              }}
-              className="rounded-full bg-naranja px-3 py-1 text-white"
-            >
-              Compatible: {marca}{modelo ? ` ${modelo}` : ''} ✕
-            </button>
-          )}
-          {soloDisponibles && (
-            <button onClick={() => setFiltro('disp', '')} className="rounded-full bg-verde px-3 py-1 text-white">
-              Solo con stock ✕
-            </button>
-          )}
-          {soloOfertas && (
-            <button onClick={() => setFiltro('ofertas', '')} className="rounded-full bg-verde px-3 py-1 text-white">
-              Solo ofertas ✕
-            </button>
-          )}
+      {/* Filtros activos */}
+      {hayFiltros && (
+        <div className="mt-5 flex flex-wrap items-center gap-2">
+          <span className="text-base text-gris-600">Mostrando:</span>
+          {q && <ChipFiltro alQuitar={() => setFiltro('q', '')}>“{q}”</ChipFiltro>}
+          {categoria && <ChipFiltro alQuitar={() => setFiltro('categoria', '')}>{nombreCategoria}</ChipFiltro>}
+          {marca && <ChipFiltro alQuitar={quitarMaquina}>Para {marca}{modelo ? ` ${modelo}` : ''}</ChipFiltro>}
+          {soloDisponibles && <ChipFiltro alQuitar={() => setFiltro('disp', '')}>Solo con stock</ChipFiltro>}
+          {soloOfertas && <ChipFiltro alQuitar={() => setFiltro('ofertas', '')}>Solo ofertas</ChipFiltro>}
+          <Link to="/tienda" className="enlace ml-1 min-h-[44px] content-center px-1 text-base">
+            Borrar todo
+          </Link>
         </div>
       )}
 
-      <div className="flex flex-col gap-6 lg:flex-row">
+      <div className="mt-6 flex flex-col gap-6 lg:flex-row lg:gap-8">
         {/* Filtros laterales */}
-        <aside className="lg:w-60 lg:shrink-0">
+        <aside className="lg:w-64 lg:shrink-0">
           <button
-            className="btn-secundario mb-3 w-full lg:hidden"
+            className="btn-secundario w-full lg:hidden"
             onClick={() => setFiltrosAbiertos(!filtrosAbiertos)}
+            aria-expanded={filtrosAbiertos}
+            aria-controls="panel-filtros"
           >
-            {filtrosAbiertos ? 'Ocultar filtros' : 'Mostrar filtros'}
+            <IconoFiltro className="h-5 w-5" />
+            {filtrosAbiertos ? 'Ocultar filtros' : `Filtrar por categoría${filtrosLaterales ? ` (${filtrosLaterales})` : ''}`}
           </button>
-          <div className={`${filtrosAbiertos ? 'block' : 'hidden'} space-y-5 lg:block`}>
-            <div className="tarjeta">
-              <h3 className="mb-2 text-sm font-bold uppercase tracking-wide text-verde">Categorías</h3>
-              <ul className="space-y-1 text-sm">
-                <li>
-                  <button
-                    onClick={() => setFiltro('categoria', '')}
-                    className={`w-full rounded px-2 py-1.5 text-left hover:bg-gris-fondo ${!categoria ? 'bg-verde/10 font-bold text-verde' : ''}`}
-                  >
-                    Todas
-                  </button>
-                </li>
+          <div id="panel-filtros" className={`${filtrosAbiertos ? 'block animar-entrada' : 'hidden'} mt-3 space-y-6 lg:mt-0 lg:block`}>
+            <div>
+              <h2 className="mb-2 px-3 text-lg font-bold">Categoría</h2>
+              <div className="space-y-0.5">
+                <OpcionFiltro activa={!categoria} onClick={() => setFiltro('categoria', '')}>Todas</OpcionFiltro>
                 {categorias.map((c) => (
-                  <li key={c.id}>
-                    <button
-                      onClick={() => setFiltro('categoria', c.id)}
-                      className={`w-full rounded px-2 py-1.5 text-left hover:bg-gris-fondo ${categoria === c.id ? 'bg-verde/10 font-bold text-verde' : ''}`}
-                    >
-                      {c.nombre}
-                    </button>
-                  </li>
+                  <OpcionFiltro key={c.id} activa={categoria === c.id} onClick={() => setFiltro('categoria', c.id)}>
+                    {c.nombre}
+                  </OpcionFiltro>
                 ))}
-              </ul>
+              </div>
             </div>
-            <div className="tarjeta">
-              <h3 className="mb-2 text-sm font-bold uppercase tracking-wide text-verde">Disponibilidad</h3>
-              <label className="flex min-h-[44px] cursor-pointer items-center gap-2 text-sm">
+            <div>
+              <h2 className="mb-2 px-3 text-lg font-bold">Mostrar solo</h2>
+              <label className="flex min-h-[48px] cursor-pointer items-center gap-3 rounded-[10px] px-3 text-base hover:bg-gris-fondo">
                 <input
                   type="checkbox"
                   checked={soloDisponibles}
                   onChange={(e) => setFiltro('disp', e.target.checked ? '1' : '')}
-                  className="h-4 w-4 accent-verde"
+                  className="control-grande mt-0"
                 />
-                Solo con stock
+                Con stock disponible
               </label>
-              <label className="flex min-h-[44px] cursor-pointer items-center gap-2 text-sm">
+              <label className="flex min-h-[48px] cursor-pointer items-center gap-3 rounded-[10px] px-3 text-base hover:bg-gris-fondo">
                 <input
                   type="checkbox"
                   checked={soloOfertas}
                   onChange={(e) => setFiltro('ofertas', e.target.checked ? '1' : '')}
-                  className="h-4 w-4 accent-verde"
+                  className="control-grande mt-0"
                 />
-                Solo ofertas
+                En oferta
               </label>
             </div>
+            <button className="btn-verde w-full lg:hidden" onClick={() => setFiltrosAbiertos(false)}>
+              Ver {filtrados.length} productos
+            </button>
           </div>
         </aside>
 
         {/* Grilla */}
-        <div className="flex-1">
-          <div className="mb-3 text-sm text-gris-600">
-            {cargando ? 'Cargando catálogo…' : error ? '' : `${filtrados.length} producto${filtrados.length === 1 ? '' : 's'}`}
-          </div>
-
+        <div className="min-w-0 flex-1">
           {error && <EstadoError onReintentar={cargar} />}
 
           {!cargando && !error && filtrados.length === 0 && (
-            <div className="tarjeta py-12 text-center">
-              <p className="font-semibold">No encontramos productos con esos filtros.</p>
-              <p className="mt-1 text-sm text-gris-600">
-                Prueba con otra marca/modelo o escríbenos por WhatsApp: lo conseguimos bajo pedido.
+            <div className="rounded-xl border-2 border-dashed border-borde px-5 py-12 text-center">
+              <p className="text-xl font-bold">No encontramos productos con esos filtros</p>
+              <p className="mx-auto mt-2 max-w-md text-base text-gris-600">
+                Prueba quitando un filtro, o escríbenos: muchos repuestos los conseguimos bajo pedido.
               </p>
+              <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
+                <a
+                  href={enlaceWhatsApp(`Hola, busco un repuesto${q ? `: ${q}` : ''}${marca ? ` para ${marca}${modelo ? ` ${modelo}` : ''}` : ''}`)}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="btn-whatsapp"
+                >
+                  <IconoWhatsApp className="h-5 w-5" /> Preguntar por WhatsApp
+                </a>
+                <Link to="/tienda" className="btn-secundario">Ver todos los repuestos</Link>
+              </div>
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
-            {visibles.map((p) => (
-              <TarjetaProducto key={p.id} producto={p} />
-            ))}
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 xl:grid-cols-4">
+            {cargando
+              ? Array.from({ length: 8 }, (_, i) => (
+                  <div key={i} className="aspect-[3/5] animate-pulse rounded-xl bg-gris-fondo" />
+                ))
+              : visibles.map((p) => <TarjetaProducto key={p.id} producto={p} />)}
           </div>
 
-          {/* Paginación */}
+          {/* Paginación simple: pocas decisiones, botones grandes */}
           {totalPaginas > 1 && (
-            <nav className="mt-8 flex items-center justify-center gap-1" aria-label="Paginación">
+            <nav className="mt-10 grid grid-cols-2 gap-3 sm:flex sm:items-center sm:justify-between" aria-label="Paginación">
               <button
                 onClick={() => irAPagina(paginaActual - 1)}
                 disabled={paginaActual === 1}
-                className="btn-secundario px-3 py-1.5"
+                className="btn-secundario px-4"
               >
-                ←
+                <IconoFlecha direccion="izquierda" className="h-5 w-5" />
+                Anterior
               </button>
-              {Array.from({ length: totalPaginas }, (_, i) => i + 1).map((n) => (
-                <button
-                  key={n}
-                  onClick={() => irAPagina(n)}
-                  className={`h-9 w-9 rounded-lg text-sm font-semibold ${
-                    n === paginaActual ? 'bg-verde text-white' : 'bg-white text-verde hover:bg-gris-fondo'
-                  }`}
-                >
-                  {n}
-                </button>
-              ))}
+              <p className="col-span-2 row-start-1 text-center text-base">
+                Página <strong>{paginaActual}</strong> de <strong>{totalPaginas}</strong>
+              </p>
               <button
                 onClick={() => irAPagina(paginaActual + 1)}
                 disabled={paginaActual === totalPaginas}
-                className="btn-secundario px-3 py-1.5"
+                className="btn-primario px-4"
               >
-                →
+                Siguiente
+                <IconoFlecha className="h-5 w-5" />
               </button>
             </nav>
           )}

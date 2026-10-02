@@ -18,9 +18,9 @@ const DATOS_TIENDA = {
   nombre: 'La Casa de la Motosierra',
   giro: 'Repuestos y maquinaria forestal/agrícola',
   direccion: 'Teniente Merino 500, Puerto Aysén, Región de Aysén',
-  telefono: '+56 9 1234 5678',
-  email: 'ventas@lacasadelamotosierra.cl',
-  rut: '77.123.456-7',
+  telefono: '+56 9 8756 8465',
+  email: 'lacasadelamotosierraaysenspa@gmail.com',
+  rut: '78.269.561-4',
 };
 
 /** Genera y descarga el PDF de una cotización */

@@ -1,36 +1,40 @@
-﻿// ============================================================
-// Portada (mockup aprobado): hero fotográfico con buscador de
-// compatibilidad + tarjeta de beneficios, categorías en fila,
-// destacados con ofertas, marcas, servicio técnico y franja de
-// confianza.
+// ============================================================
+// Portada (propuesta A · "Naranja a fondo"):
+// 1. Hero naranja a sangre: pregunta grande, buscador con sombra
+//    dura y chips de categorías (en escritorio, el selector de
+//    marca va al lado).
+// 2. Cinta negra en movimiento con las garantías.
+// 3. Elige tu marca (móvil) → repuestos que le sirven.
+// 4. Riel "Lo más pedido" con stickers de oferta.
+// 5. Ayuda humana, categorías, taller con foto, cómo comprar y
+//    garantías.
 // ============================================================
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import BuscadorCompatibilidad from '../components/BuscadorCompatibilidad';
+import BuscadorConSugerencias from '../components/BuscadorConSugerencias';
 import EstadoError from '../components/EstadoError';
 import TarjetaProducto from '../components/TarjetaProducto';
+import { ICONO_CATEGORIA } from '../components/FotoProducto';
 import {
-  IconoCadena, IconoCamion, IconoCarrito, IconoDocumento, IconoEngranaje, IconoEscudo,
-  IconoHoja, IconoLlave, IconoMotosierra, IconoPin, IconoWhatsApp,
+  IconoCamara, IconoCamion, IconoCheck, IconoEngranaje, IconoEscudo, IconoFlecha, IconoLlave,
+  IconoTelefono, IconoWhatsApp,
 } from '../components/Iconos';
-import { MarcaMotosierra } from '../components/LogoLCM';
-import { WHATSAPP_NUMERO } from '../config/firebase';
-import { obtenerCategorias, obtenerMarcasCompatibles, obtenerProductos } from '../services/productos';
+import { DIRECCION_TIENDA, ENLACE_LLAMAR, TELEFONO_VISIBLE, enlaceWhatsApp } from '../config/tienda';
+import { obtenerCategorias, obtenerProductos } from '../services/productos';
 import { estadoStock } from '../utils/precio';
 import { useSeo } from '../utils/seo';
 import type { Categoria, Producto } from '../types';
 
-/** Icono de línea por categoría */
-const ICONO_CATEGORIA: Record<string, React.ComponentType<{ className?: string }>> = {
-  motosierras: IconoMotosierra,
-  desbrozadoras: IconoHoja,
-  'espadas-cadenas': IconoCadena,
-  'filtros-bujias': IconoEngranaje,
-  'carburacion-arranque': IconoEngranaje,
-  'aceites-lubricantes': IconoHoja,
-  'herramientas-seguridad': IconoEscudo,
-  'repuestos-varios': IconoEngranaje,
-};
+/** Garantías que recorren la cinta negra */
+const CINTA = ['Retiro gratis en Aysén', 'Envío a todo Chile', 'Pago con Webpay', 'Taller propio', 'Stock real'];
+
+/** Pasos reales de una compra, en orden */
+const PASOS_COMPRA = [
+  ['Busca tu repuesto', 'Por tu máquina, por categoría o escribiendo lo que necesitas.'],
+  ['Agrégalo al carrito', 'Ves el precio final y el costo de envío antes de pagar.'],
+  ['Paga y recíbelo', 'Webpay, Mercado Pago o transferencia. Retiro gratis en la tienda o despacho a todo Chile.'],
+];
 
 export default function Home() {
   useSeo({
@@ -40,18 +44,19 @@ export default function Home() {
   });
   const [productos, setProductos] = useState<Producto[]>([]);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
-  const [marcas, setMarcas] = useState<string[]>([]);
+  const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(false);
 
   const cargar = () => {
     setError(false);
-    Promise.all([obtenerProductos(), obtenerCategorias(), obtenerMarcasCompatibles()])
-      .then(([ps, cs, ms]) => {
+    setCargando(true);
+    Promise.all([obtenerProductos(), obtenerCategorias()])
+      .then(([ps, cs]) => {
         setProductos(ps);
         setCategorias(cs);
-        setMarcas(ms);
       })
-      .catch(() => setError(true));
+      .catch(() => setError(true))
+      .finally(() => setCargando(false));
   };
   useEffect(cargar, []);
 
@@ -62,205 +67,241 @@ export default function Home() {
 
   return (
     <div>
-      {/* ── Hero fotográfico ─────────────────────────────── */}
-      <section className="relative isolate overflow-hidden bg-carbon">
-        {/* La prioridad de carga la fija el <link rel="preload"> del hero en
-            index.html; React 18 no reconoce el atributo fetchPriority en el img. */}
-        <img
-          src="/hero.webp"
-          alt=""
-          aria-hidden="true"
-          width={1600}
-          height={840}
-          className="animar-kenburns absolute inset-0 h-full w-full object-cover opacity-45"
-        />
-        {/* Velo para legibilidad del texto blanco */}
-        <div className="absolute inset-0 bg-gradient-to-r from-carbon/80 via-carbon/45 to-carbon/25" aria-hidden="true" />
+      {/* ── Hero naranja a sangre ────────────────────────── */}
+      <section className="relative isolate overflow-hidden bg-naranja text-carbon">
+        {/* Silueta de motosierra gigante y tenue (decorativa) */}
+        <svg viewBox="0 0 200 120" className="pointer-events-none absolute -right-16 top-8 -z-10 w-[320px] opacity-[0.12] sm:w-[520px] lg:right-[38%]" aria-hidden="true">
+          <rect x="4" y="62" width="130" height="20" rx="10" fill="#0E0F0E" />
+          <path d="M116 40h54a18 18 0 0 1 18 18v26a12 12 0 0 1-12 12h-58a12 12 0 0 1-12-12V52a12 12 0 0 1 10-12z" fill="#0E0F0E" />
+          <path d="M128 40V22a8 8 0 0 1 8-8h28a8 8 0 0 1 8 8v18h-12V26h-20v14z" fill="#0E0F0E" />
+        </svg>
 
-        <div className="relative mx-auto grid max-w-7xl gap-6 px-4 py-10 lg:grid-cols-[1.1fr_1fr_0.8fr] lg:items-center lg:py-14">
-          {/* Titular — entrada única del hero, con la marca como protagonista */}
-          <div className="animar-hero text-white">
-            <p className="mb-3 inline-block border-b-[3px] border-naranja pb-1.5 font-display text-xl font-bold uppercase tracking-[0.14em] sm:text-2xl">
-              La Casa de la Motosierra
-            </p>
-            <h1 className="font-display text-4xl font-bold uppercase leading-none sm:text-5xl">
-              Todo para tu trabajo<br />
-              <span className="text-naranja">forestal y agrícola</span>
+        <div className="contenedor grid gap-8 pb-12 pt-6 sm:pb-16 sm:pt-10 lg:grid-cols-[1.1fr_1fr] lg:items-center lg:gap-12 lg:py-16">
+          <div className="animar-hero flex min-w-0 flex-col gap-5">
+            <h1 className="font-display text-[3.1rem] font-extrabold uppercase leading-[0.9] sm:text-7xl">
+              ¿Qué le hace falta a tu máquina?
             </h1>
-            <p className="mt-4 max-w-md text-white/85 sm:text-lg">
-              Repuestos originales y alternativos, maquinaria y accesorios.
-              Envíos rápidos a todo Chile.
+            <p className="max-w-xl text-lg font-medium sm:text-xl">
+              Repuestos para motosierras y desbrozadoras, con stock real y envío a todo Chile.
             </p>
-            <ul className="mt-8 hidden max-w-md grid-cols-2 gap-x-6 gap-y-4 text-sm lg:grid">
-              {[
-                ['Stock real', 'Siempre actualizado'],
-                ['Envíos a todo Chile', 'Rápidos y seguros'],
-                ['Asesoría experta', 'Te ayudamos a elegir'],
-                ['Compra segura', 'Webpay y más'],
-              ].map(([titulo, detalle]) => (
-                <li key={titulo}>
-                  <span className="block font-bold">{titulo}</span>
-                  <span className="text-white/70">{detalle}</span>
-                </li>
+
+            {/* Buscador con sombra dura */}
+            <div className="rounded-[12px] shadow-dura">
+              <BuscadorConSugerencias />
+            </div>
+
+            {/* Chips de categorías: un toque y listo */}
+            <div className="riel -mx-4 gap-2 px-4 py-1 sm:mx-0 sm:flex-wrap sm:px-0">
+              {categorias.map((c) => (
+                <Link
+                  key={c.id}
+                  to={`/tienda?categoria=${c.id}`}
+                  className="flex min-h-[48px] shrink-0 items-center whitespace-nowrap rounded-full border-2 border-carbon bg-naranja-suave px-4 text-base font-bold text-carbon transition-transform duration-150 hover:-translate-y-0.5 active:scale-95"
+                >
+                  {c.nombre}
+                </Link>
               ))}
-            </ul>
+            </div>
           </div>
 
-          {/* Buscador de compatibilidad — protagonista, entra 80 ms después del titular */}
-          <div className="animar-hero [animation-delay:80ms]">
+          {/* Selector de marca: al lado en escritorio, debajo de la cinta en móvil */}
+          <div className="animar-hero hidden [animation-delay:80ms] lg:block">
             <BuscadorCompatibilidad />
           </div>
-
-          {/* Beneficios */}
-          <aside className="hidden rounded-2xl bg-white p-2 shadow-tarjeta lg:block">
-            {[
-              [IconoCarrito, 'Retiro en tienda', 'Gratis en Puerto Aysén'],
-              [IconoCamion, 'Despachos a todo Chile', 'Cotiza tu envío en el checkout'],
-              [IconoEscudo, 'Métodos de pago', 'Webpay, Mercado Pago, transferencia'],
-              [IconoDocumento, 'Cotizaciones para empresas', 'Genera cotizaciones formales en PDF'],
-            ].map(([Icono, titulo, detalle], i) => (
-              <div key={titulo as string} className={`flex items-start gap-3 p-3.5 ${i > 0 ? 'border-t border-borde' : ''}`}>
-                <Icono className="mt-0.5 h-6 w-6 shrink-0 text-verde" />
-                <div>
-                  <p className="text-sm font-bold">{titulo as string}</p>
-                  <p className="text-xs text-gris-600">{detalle as string}</p>
-                </div>
-              </div>
-            ))}
-          </aside>
         </div>
+      </section>
+
+      {/* ── Cinta negra en movimiento ────────────────────── */}
+      {/* El contenedor recorta la cinta inclinada para que no desborde el ancho */}
+      <div className="relative z-[1] -mt-7 overflow-hidden py-3" aria-hidden="true">
+        <div className="-mx-4 -rotate-2 overflow-hidden bg-carbon py-3 text-white">
+          <div className="cinta-movil flex w-max gap-7 whitespace-nowrap font-display text-xl font-bold uppercase tracking-wide">
+            {[...CINTA, ...CINTA, ...CINTA, ...CINTA].map((t, i) => (
+              <span key={i} className="flex items-center gap-7">
+                {t}
+                <span className="text-naranja">✦</span>
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+      {/* Las garantías para lectores de pantalla (la cinta es decorativa) */}
+      <p className="sr-only">{CINTA.join(', ')}.</p>
+
+      {/* ── Elige tu marca (móvil y tablet) ──────────────── */}
+      <section className="contenedor pt-7 lg:hidden">
+        <BuscadorCompatibilidad />
       </section>
 
       {/* Error de carga del catálogo (no bloquea el hero) */}
       {error && (
-        <div className="mx-auto max-w-7xl px-4 pt-10">
+        <div className="contenedor pt-10">
           <EstadoError onReintentar={cargar} />
         </div>
       )}
 
-      {/* ── Categorías principales ───────────────────────── */}
-      <section className="mx-auto max-w-7xl px-4 py-10">
-        <h2 className="titulo-seccion mb-5">Categorías principales</h2>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
-          {categorias.map((c) => {
-            const Icono = ICONO_CATEGORIA[c.id] ?? IconoEngranaje;
-            const n = conteoPorCategoria(c.id);
-            return (
-              <Link
-                key={c.id}
-                to={`/tienda?categoria=${c.id}`}
-                className="group flex flex-col items-center gap-2 rounded-xl border border-borde bg-white p-4 text-center transition-colors duration-150 hover:border-verde"
-              >
-                <Icono className="h-8 w-8 text-grafito transition-colors group-hover:text-verde" />
-                <span className="text-sm font-semibold leading-tight">{c.nombre}</span>
-                <span className="text-xs text-gris-600">{n} producto{n === 1 ? '' : 's'}</span>
-              </Link>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* ── Productos destacados ─────────────────────────── */}
-      <section className="bg-gris-fondo">
-        <div className="mx-auto max-w-7xl px-4 py-10">
-          <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <h2 className="titulo-seccion">Productos destacados</h2>
-              <span className="rounded-full bg-verde-badge px-3 py-1 text-xs font-bold text-verde-oscuro">
-                Ofertas y novedades
-              </span>
-            </div>
-            <Link to="/tienda" className="text-sm font-semibold text-verde hover:underline">
-              Ver todos los productos →
-            </Link>
+      {/* ── Lo más pedido: riel con stickers ─────────────── */}
+      <section className="pt-12">
+        <div className="contenedor flex items-end justify-between gap-4">
+          <div>
+            <h2 className="titulo-seccion">Lo más pedido</h2>
+            <p className="bajada-seccion">Precios con IVA incluido. Desliza para ver más.</p>
           </div>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-            {destacados.map((p) => (
-              <TarjetaProducto key={p.id} producto={p} />
-            ))}
-          </div>
+          <Link to="/tienda" className="enlace hidden shrink-0 text-lg sm:inline">Ver todo</Link>
         </div>
-      </section>
-
-      {/* ── Marcas compatibles ───────────────────────────── */}
-      <section className="mx-auto max-w-7xl px-4 py-10">
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-          <h2 className="titulo-seccion">Repuestos por marca</h2>
-          <Link to="/marcas" className="text-sm font-semibold text-verde hover:underline">
-            Ver todas las marcas →
+        <div className="riel mx-auto mt-5 max-w-7xl gap-3 px-4 pb-5 pt-1 sm:gap-4 sm:px-6">
+          {cargando && productos.length === 0
+            ? Array.from({ length: 4 }, (_, i) => (
+                <div key={i} className="h-[420px] w-[210px] shrink-0 animate-pulse rounded-[18px] bg-gris-fondo sm:w-[250px]" />
+              ))
+            : destacados.map((p) => (
+                <div key={p.id} className="w-[210px] shrink-0 sm:w-[250px]">
+                  <TarjetaProducto producto={p} />
+                </div>
+              ))}
+        </div>
+        <div className="contenedor">
+          <Link to="/tienda" className="btn-secundario w-full sm:w-auto">
+            Ver todos los repuestos <IconoFlecha className="h-5 w-5" />
           </Link>
         </div>
-        <div className="flex flex-wrap gap-2.5">
-          {marcas.map((m) => (
-            <Link
-              key={m}
-              to={`/tienda?marca=${encodeURIComponent(m)}`}
-              className="rounded-lg border border-borde bg-white px-5 py-3 text-sm font-bold text-grafito transition-colors duration-150 hover:border-verde hover:text-verde"
-            >
-              {m}
-            </Link>
-          ))}
-        </div>
       </section>
 
-      {/* ── Servicio técnico + lema ──────────────────────── */}
-      <section className="relative isolate overflow-hidden bg-carbon text-white">
-        {/* Marca de agua: la motosierra del logo, gigante y tenue */}
-        <MarcaMotosierra
-          mono
-          className="pointer-events-none absolute -bottom-10 -right-6 -z-10 h-56 w-auto rotate-[-8deg] text-white opacity-[0.06] sm:h-96"
-        />
-        <div className="mx-auto flex max-w-7xl flex-col items-start gap-6 px-4 py-12 lg:flex-row lg:items-center lg:justify-between">
-          <div className="max-w-xl">
-            <p className="font-display text-lg font-semibold uppercase tracking-wide text-naranja">
-              “Economía para la Gente de Aysén”
-            </p>
-            <h2 className="mt-2 font-display text-3xl font-bold uppercase leading-tight sm:text-4xl">
-              Repuestos y servicio técnico
-            </h2>
-            <p className="mt-3 text-white/75">
-              ¿Tu máquina falla y no sabes qué pieza es? Tráela al taller o envíanos una foto
-              por WhatsApp: la diagnosticamos, cotizamos la reparación y te avisamos cuando
-              esté lista.
-            </p>
+      {/* ── Ayuda humana: foto o llamada ─────────────────── */}
+      <section className="contenedor pt-12">
+        <div className="flex flex-col gap-5 rounded-[22px] border-2 border-carbon bg-naranja-suave p-5 sm:p-7 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-start gap-4">
+            <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-carbon text-naranja">
+              <IconoCamara className="h-7 w-7" />
+            </span>
+            <div>
+              <h2 className="font-display text-3xl font-extrabold uppercase leading-none">¿No sabes qué pieza es?</h2>
+              <p className="mt-2 max-w-xl text-base">
+                Mándanos una foto de la pieza o de tu máquina por WhatsApp y te decimos cuál es.
+                O llámanos al <strong className="whitespace-nowrap">{TELEFONO_VISIBLE}</strong>.
+              </p>
+            </div>
           </div>
-          <div className="flex flex-col gap-3 sm:flex-row">
+          <div className="grid shrink-0 gap-3 sm:grid-cols-2 md:flex">
             <a
-              href={`https://wa.me/${WHATSAPP_NUMERO}?text=${encodeURIComponent('Hola, necesito servicio técnico para mi máquina')}`}
+              href={enlaceWhatsApp('Hola, les envío una foto de la pieza que necesito:')}
               target="_blank"
               rel="noreferrer"
-              className="btn-primario px-6 py-3"
+              className="btn-whatsapp"
             >
-              <IconoWhatsApp className="h-5 w-5" /> Consultar por WhatsApp
+              <IconoWhatsApp className="h-6 w-6" /> Enviar foto
             </a>
-            <Link to="/nosotros" className="btn-secundario border-white/30 bg-transparent px-6 py-3 text-white hover:border-white">
-              <IconoLlave className="h-5 w-5" /> Conocer el taller
-            </Link>
+            <a href={ENLACE_LLAMAR} className="btn-secundario">
+              <IconoTelefono className="h-5 w-5" /> Llamar
+            </a>
           </div>
         </div>
       </section>
 
-      {/* ── Franja de confianza ──────────────────────────── */}
-      <section className="border-t border-borde bg-white">
-        <div className="mx-auto grid max-w-7xl gap-6 px-4 py-8 sm:grid-cols-2 lg:grid-cols-5">
-          {[
-            [IconoWhatsApp, 'Atención personalizada', 'Te asesoramos por WhatsApp'],
-            [IconoEscudo, 'Garantía de calidad', 'Repuestos originales y alternativos'],
-            [IconoCamion, 'Devoluciones fáciles', '10 días para cambios'],
-            [IconoCarrito, 'Compra segura', 'Protegido por Webpay'],
-            [IconoPin, 'Empresa local', 'Comprometidos con Aysén'],
-          ].map(([Icono, titulo, detalle]) => (
-            <div key={titulo as string} className="flex items-start gap-3">
-              <Icono className="mt-0.5 h-6 w-6 shrink-0 text-verde" />
-              <div>
-                <p className="text-sm font-bold">{titulo as string}</p>
-                <p className="text-xs text-gris-600">{detalle as string}</p>
-              </div>
+      {/* ── Categorías en lista grande ───────────────────── */}
+      <section className="contenedor pt-12">
+        <h2 className="titulo-seccion">Todas las categorías</h2>
+        <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {cargando && categorias.length === 0
+            ? Array.from({ length: 8 }, (_, i) => <div key={i} className="h-[76px] animate-pulse rounded-2xl bg-gris-fondo" />)
+            : categorias.map((c) => {
+                const Icono = ICONO_CATEGORIA[c.id] ?? IconoEngranaje;
+                const n = conteoPorCategoria(c.id);
+                return (
+                  <Link
+                    key={c.id}
+                    to={`/tienda?categoria=${c.id}`}
+                    className="group flex min-h-[76px] min-w-0 items-center gap-4 rounded-2xl border-2 border-carbon bg-white px-4 py-3 transition-[transform,box-shadow] duration-150 hover:-translate-y-0.5 hover:shadow-dura"
+                  >
+                    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-naranja text-carbon">
+                      <Icono className="h-7 w-7" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-lg font-bold leading-tight">
+                        {/* Corte permitido tras "/" (ej: Desbrozadoras/Orilladoras) */}
+                        {c.nombre.replace(/\//g, '/​')}
+                      </span>
+                      <span className="block text-sm text-gris-600">
+                        {n > 0 ? `${n} producto${n === 1 ? '' : 's'}` : 'Consultar disponibilidad'}
+                      </span>
+                    </span>
+                    <IconoFlecha className="h-5 w-5 shrink-0 transition-transform duration-150 group-hover:translate-x-0.5" />
+                  </Link>
+                );
+              })}
+        </div>
+      </section>
+
+      {/* ── Taller con foto ──────────────────────────────── */}
+      <section className="contenedor pt-12">
+        <div className="relative isolate flex min-h-[320px] flex-col justify-end overflow-hidden rounded-[22px] bg-carbon text-white sm:min-h-[360px]">
+          <img src="/hero.webp" alt="" loading="lazy" width={1600} height={840} className="absolute inset-0 -z-10 h-full w-full object-cover opacity-50" />
+          <div className="flex flex-col items-start gap-3 p-5 sm:max-w-xl sm:p-8">
+            <span className="rounded-full bg-naranja px-3.5 py-1 text-sm font-bold text-carbon">Taller en Puerto Aysén</span>
+            <h2 className="font-display text-[2.6rem] font-extrabold uppercase leading-[0.95] sm:text-5xl">¿Tu máquina falla?</h2>
+            <p className="text-lg">
+              Tráela al taller o mándanos un video. Te decimos qué tiene y cuánto cuesta arreglarla.
+            </p>
+            <div className="mt-1 flex w-full flex-col gap-3 sm:flex-row">
+              <a
+                href={enlaceWhatsApp('Hola, necesito servicio técnico para mi máquina')}
+                target="_blank"
+                rel="noreferrer"
+                className="btn-whatsapp"
+              >
+                <IconoWhatsApp className="h-6 w-6" /> Enviar video por WhatsApp
+              </a>
+              <Link to="/nosotros" className="btn border-2 border-white text-white hover:bg-white hover:text-carbon">
+                <IconoLlave className="h-5 w-5" /> Conocer el taller
+              </Link>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Cómo comprar: secuencia real en 3 pasos ──────── */}
+      <section className="contenedor pt-14">
+        <h2 className="titulo-seccion">Comprar es fácil</h2>
+        <p className="bajada-seccion">
+          Y si prefieres, ven a la tienda en {DIRECCION_TIENDA} o pídelo por teléfono.
+        </p>
+        <ol className="mt-7 grid gap-6 md:grid-cols-3 md:gap-8">
+          {PASOS_COMPRA.map(([titulo, detalle], i) => (
+            <li key={titulo} className="flex gap-4 md:flex-col md:gap-3">
+              <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border-2 border-carbon bg-naranja font-display text-4xl font-extrabold text-carbon shadow-dura-sm">
+                {i + 1}
+              </span>
+              <div>
+                <h3 className="text-xl font-bold">{titulo}</h3>
+                <p className="mt-1 text-base text-gris-600">{detalle}</p>
+              </div>
+            </li>
           ))}
+        </ol>
+      </section>
+
+      {/* ── Garantías ────────────────────────────────────── */}
+      <section className="contenedor pt-14">
+        <div className="grid gap-6 rounded-[22px] bg-gris-fondo p-6 sm:grid-cols-2 lg:grid-cols-4">
+          {[
+            [IconoEscudo, 'Compra protegida', 'Pagas con Webpay de Transbank.'],
+            [IconoCheck, 'Garantía', 'Repuestos originales y alternativos de calidad.'],
+            [IconoCamion, 'Cambios en 10 días', 'Si no le sirve a tu máquina, lo cambiamos.'],
+            [IconoTelefono, 'Atención de persona', 'Te responde alguien de la tienda, no un robot.'],
+          ].map(([Icono, titulo, detalle]) => {
+            const I = Icono as React.ComponentType<{ className?: string }>;
+            return (
+              <div key={titulo as string} className="flex items-start gap-3">
+                <I className="mt-0.5 h-7 w-7 shrink-0 text-verde" />
+                <div>
+                  <p className="text-lg font-bold leading-tight">{titulo as string}</p>
+                  <p className="mt-0.5 text-base text-gris-600">{detalle as string}</p>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </section>
     </div>
   );
 }
-

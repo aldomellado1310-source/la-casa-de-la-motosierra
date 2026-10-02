@@ -13,9 +13,9 @@ export default function Nosotros() {
   return (
     <div>
       {/* Presentación */}
-      <section className="mx-auto max-w-3xl px-4 py-12">
+      <section className="contenedor max-w-3xl py-12">
         <div className="mb-10 flex flex-col items-center gap-3 text-center">
-          <LogoLCM conBajada className="scale-125" />
+          <LogoLCM tamano="lg" conBajada />
           <p className="mt-3 font-display text-lg font-semibold uppercase tracking-wide text-naranja-oscuro">
             “Economía para la Gente de Aysén”
           </p>
@@ -46,7 +46,7 @@ export default function Nosotros() {
 
       {/* Servicio técnico */}
       <section className="bg-gris-fondo">
-        <div className="mx-auto max-w-3xl px-4 py-12">
+        <div className="contenedor max-w-3xl py-12">
           <h2 className="titulo-seccion mb-4 flex items-center gap-3">
             <IconoLlave className="h-7 w-7 text-naranja" /> Servicio técnico propio
           </h2>
@@ -63,7 +63,7 @@ export default function Nosotros() {
               'Cambio de pistones, embragues y rodamientos',
               'Diagnóstico gratuito al comprar el repuesto aquí',
             ].map((s) => (
-              <li key={s} className="flex items-start gap-2 rounded-lg border border-borde bg-white p-3 text-sm">
+              <li key={s} className="flex items-start gap-2 rounded-lg border border-borde bg-white p-3 text-base">
                 <IconoEscudo className="mt-0.5 h-4 w-4 shrink-0 text-verde" />
                 {s}
               </li>
@@ -81,13 +81,13 @@ export default function Nosotros() {
       </section>
 
       {/* Visítanos */}
-      <section className="mx-auto max-w-3xl px-4 py-12">
+      <section className="contenedor max-w-3xl py-12">
         <div className="tarjeta flex flex-col items-center gap-4 py-8 text-center">
           <h2 className="font-display text-2xl font-bold uppercase tracking-wide">Visítanos</h2>
-          <p className="flex items-center gap-2 text-sm text-grafito">
+          <p className="flex items-center gap-2 text-base text-grafito">
             <IconoPin className="h-4 w-4 text-naranja" /> Teniente Merino 500, Puerto Aysén
           </p>
-          <p className="flex items-center gap-2 text-sm text-grafito">
+          <p className="flex items-center gap-2 text-base text-grafito">
             <IconoReloj className="h-4 w-4 text-naranja" /> Lunes a viernes 9:00–18:30 · Sábado 9:30–13:30
           </p>
           <Link to="/tienda" className="btn-verde mt-2">Conocer la tienda online</Link>

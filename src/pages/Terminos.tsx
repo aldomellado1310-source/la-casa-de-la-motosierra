@@ -8,7 +8,7 @@ const SECCIONES: { titulo: string; parrafos: string[] }[] = [
   {
     titulo: '1. Identificación del vendedor',
     parrafos: [
-      'Este sitio es operado por La Casa de la Motosierra SpA, RUT 77.123.456-7, con domicilio en Teniente Merino 500, Puerto Aysén, Región de Aysén, Chile (en adelante, "la Tienda"). Contacto: ventas@lacasadelamotosierra.cl, +56 9 1234 5678.',
+      'Este sitio es operado por La Casa de la Motosierra Aysén SpA, RUT 78.269.561-4, con domicilio en Teniente Merino 500, Puerto Aysén, Región de Aysén, Chile (en adelante, "la Tienda"). Contacto: lacasadelamotosierraaysenspa@gmail.com, +56 9 8756 8465.',
     ],
   },
   {
@@ -72,14 +72,14 @@ export default function Terminos() {
     descripcion: 'Condiciones de compra, despacho, retracto y garantía legal de La Casa de la Motosierra, conforme a la Ley 19.496.',
   });
   return (
-    <div className="mx-auto max-w-3xl px-4 py-10">
+    <div className="contenedor max-w-3xl py-10">
       <h1 className="titulo-seccion mb-2">Términos y condiciones</h1>
-      <p className="mb-8 text-sm text-gris-600">Última actualización: julio de 2026</p>
+      <p className="mb-8 text-base text-gris-600">Última actualización: julio de 2026</p>
       {SECCIONES.map((s) => (
         <section key={s.titulo} className="mb-6">
           <h2 className="mb-2 font-display text-xl font-bold uppercase tracking-wide">{s.titulo}</h2>
           {s.parrafos.map((p, i) => (
-            <p key={i} className="mb-2 text-sm leading-relaxed text-grafito/90">{p}</p>
+            <p key={i} className="mb-2 text-base leading-relaxed text-grafito/90">{p}</p>
           ))}
         </section>
       ))}

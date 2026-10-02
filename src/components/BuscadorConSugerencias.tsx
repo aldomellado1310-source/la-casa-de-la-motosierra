@@ -8,7 +8,8 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { buscarPorTexto } from '../services/productos';
 import { formatoCLP, precioVigente } from '../utils/precio';
-import { IconoBuscar } from './Iconos';
+import { IconoBuscar, IconoFlecha } from './Iconos';
+import FotoProducto from './FotoProducto';
 import type { Producto } from '../types';
 
 const MAX_SUGERENCIAS = 6;
@@ -88,37 +89,36 @@ export default function BuscadorConSugerencias() {
   return (
     <div ref={contenedor} className="relative w-full">
       <form onSubmit={irATienda} role="search">
-        <div className="flex overflow-hidden rounded-lg border border-borde focus-within:border-verde focus-within:ring-2 focus-within:ring-verde/25">
+        <div className="flex overflow-hidden rounded-[12px] border-2 border-carbon bg-white focus-within:ring-4 focus-within:ring-verde/30">
           <input
             type="search"
             value={texto}
             onChange={(e) => setTexto(e.target.value)}
             onFocus={() => sugerencias.length > 0 && setAbierto(true)}
             onKeyDown={alTeclear}
-            placeholder="Buscar por nombre, SKU o producto…"
-            aria-label="Buscar productos"
+            placeholder="Ej: cadena, filtro, bujía…"
+            aria-label="¿Qué repuesto buscas?"
             role="combobox"
             aria-expanded={desplegableVisible}
             aria-controls="lista-sugerencias"
             aria-autocomplete="list"
             aria-activedescendant={activa >= 0 ? `sugerencia-${sugerencias[activa].id}` : undefined}
             autoComplete="off"
-            className="min-h-[44px] w-full border-0 px-4 text-base outline-none placeholder:text-gris-600 md:text-sm"
+            className="min-h-[52px] w-full min-w-0 border-0 px-4 text-base outline-none placeholder:text-gris-600 [&::-webkit-search-cancel-button]:h-5 [&::-webkit-search-cancel-button]:w-5"
           />
           <button
             type="submit"
-            className="flex min-h-[44px] items-center gap-2 bg-naranja px-4 text-sm font-bold text-white transition-colors hover:bg-naranja-oscuro md:px-5"
-            aria-label="Buscar"
+            className="m-1 flex min-h-[44px] shrink-0 items-center gap-2 rounded-[9px] bg-carbon px-4 text-base font-bold text-white transition-colors hover:bg-grafito md:px-6"
           >
-            <IconoBuscar className="h-4 w-4" />
-            <span className="hidden lg:inline">Buscar</span>
+            <IconoBuscar className="h-5 w-5" />
+            Buscar
           </button>
         </div>
       </form>
 
       {/* Sugerencias */}
       {desplegableVisible && (
-        <div className="animar-entrada absolute left-0 right-0 top-full z-flotante mt-1 overflow-hidden rounded-xl border border-borde bg-white shadow-tarjeta">
+        <div className="animar-entrada absolute left-0 right-0 top-full z-flotante mt-2 overflow-hidden rounded-2xl border-2 border-carbon bg-white shadow-dura">
           <ul id="lista-sugerencias" role="listbox" aria-label="Sugerencias de productos">
             {sugerencias.map((p, i) => (
               <li
@@ -129,22 +129,22 @@ export default function BuscadorConSugerencias() {
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => irAProducto(p.id)}
                 onMouseEnter={() => setActiva(i)}
-                className={`flex cursor-pointer items-center gap-3 px-3 py-2.5 transition-colors ${i === activa ? 'bg-gris-fondo' : ''}`}
+                className={`flex min-h-[64px] cursor-pointer items-center gap-3 border-b border-borde px-3 py-2.5 transition-colors ${i === activa ? 'bg-gris-fondo' : ''}`}
               >
-                <img src={p.fotos[0]} alt="" loading="lazy" width={40} height={40} className="h-10 w-10 shrink-0 rounded-lg border border-borde object-cover" />
+                <FotoProducto src={p.fotos[0]} alt="" categoria={p.categoria} tamano="chico" width={48} height={48} className="h-12 w-12 shrink-0 rounded-lg border border-borde object-cover" />
                 <span className="min-w-0 flex-1">
-                  <span className="line-clamp-1 text-sm font-semibold text-grafito">{p.nombre}</span>
-                  <span className="text-xs text-gris-600">SKU {p.sku}</span>
+                  <span className="line-clamp-2 text-base font-semibold leading-snug text-grafito">{p.nombre}</span>
+                  <span className="text-sm text-gris-600">Código {p.sku}</span>
                 </span>
-                <span className="shrink-0 text-sm font-bold text-grafito">{formatoCLP(precioVigente(p))}</span>
+                <span className="shrink-0 text-base font-bold text-grafito">{formatoCLP(precioVigente(p))}</span>
               </li>
             ))}
           </ul>
           <button
             onClick={() => { setAbierto(false); navigate(`/tienda?q=${encodeURIComponent(texto.trim())}`); setTexto(''); }}
-            className="w-full border-t border-borde px-3 py-2.5 text-center text-sm font-semibold text-verde hover:bg-gris-fondo"
+            className="flex min-h-[52px] w-full items-center justify-center gap-2 px-3 text-center text-base font-bold text-verde hover:bg-gris-fondo"
           >
-            Ver todos los resultados de “{texto.trim()}” →
+            Ver todos los resultados de “{texto.trim()}” <IconoFlecha className="h-5 w-5" />
           </button>
         </div>
       )}

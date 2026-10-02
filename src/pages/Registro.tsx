@@ -57,7 +57,7 @@ export default function Registro() {
   };
 
   return (
-    <div className="mx-auto max-w-md px-4 py-10">
+    <div className="contenedor max-w-md py-10">
       <div className="tarjeta">
         <h1 className="font-display text-2xl font-bold uppercase tracking-wide text-grafito">Crear cuenta</h1>
 
@@ -75,8 +75,8 @@ export default function Registro() {
                 tipo === valor ? 'border-naranja bg-naranja/5' : 'border-borde hover:border-verde'
               }`}
             >
-              <span className="block text-sm font-bold">{titulo}</span>
-              <span className="block text-[11px] text-gris-600">{detalle}</span>
+              <span className="block text-base font-bold">{titulo}</span>
+              <span className="block text-sm text-gris-600">{detalle}</span>
             </button>
           ))}
         </div>
@@ -114,12 +114,12 @@ export default function Registro() {
             <label className="etiqueta" htmlFor="reg-clave">Contraseña</label>
             <input id="reg-clave" type="password" autoComplete="new-password" required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} className="campo" />
           </div>
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && <p className="text-base text-oferta">{error}</p>}
           <button type="submit" disabled={cargando} className="btn-primario w-full py-3">
             {cargando ? 'Creando cuenta…' : 'Crear cuenta'}
           </button>
         </form>
-        <p className="mt-4 text-center text-sm">
+        <p className="mt-4 text-center text-base">
           ¿Ya tienes cuenta?{' '}
           <Link to="/ingresar" className="font-semibold text-verde hover:underline">Inicia sesión</Link>
         </p>

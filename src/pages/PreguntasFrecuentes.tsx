@@ -70,11 +70,11 @@ export default function PreguntasFrecuentes() {
   const secciones = [...new Set(PREGUNTAS.map((p) => p.seccion))];
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-10">
+    <div className="contenedor max-w-3xl py-10">
       <h1 className="mb-8 text-center titulo-seccion sm:text-4xl">Preguntas frecuentes</h1>
       {secciones.map((seccion) => (
         <section key={seccion} className="mb-6">
-          <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-naranja-oscuro">{seccion}</h2>
+          <h2 className="mb-3 text-base font-bold uppercase tracking-wide text-naranja-oscuro">{seccion}</h2>
           <div className="space-y-2">
             {PREGUNTAS.map((p, i) =>
               p.seccion === seccion ? (
@@ -83,13 +83,13 @@ export default function PreguntasFrecuentes() {
                     onClick={() => setAbierta(abierta === i ? null : i)}
                     aria-expanded={abierta === i}
                     aria-controls={`faq-respuesta-${i}`}
-                    className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm font-semibold hover:bg-gris-fondo"
+                    className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-base font-semibold hover:bg-gris-fondo"
                   >
                     {p.q}
                     <span aria-hidden="true" className="shrink-0 text-verde">{abierta === i ? '−' : '+'}</span>
                   </button>
                   {abierta === i && (
-                    <p id={`faq-respuesta-${i}`} className="animar-entrada border-t border-borde px-4 py-3 text-sm leading-relaxed text-grafito/85">
+                    <p id={`faq-respuesta-${i}`} className="animar-entrada border-t border-borde px-4 py-3 text-base leading-relaxed text-grafito/85">
                       {p.a}
                     </p>
                   )}

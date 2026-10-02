@@ -38,12 +38,20 @@ Usuarios demo: `cliente@demo.cl` / `empresa@demo.cl` / `admin@demo.cl`, clave `d
 
 ## Sistema de diseño (resumen; detalle en DESIGN.md)
 
-- Tokens Tailwind: `carbon`, `grafito`, `gris-600`, `borde`, `gris-fondo`, `naranja(-oscuro)`,
-  `verde(-oscuro/-badge)`, `oferta`. **No usar hex sueltos en componentes.**
-- Clases del sistema (en `index.css`): `btn-primario` (naranja, UN solo CTA por pantalla),
-  `btn-verde` (estructural), `btn-secundario`, `campo`, `etiqueta`, `tarjeta`, `titulo-seccion`.
-- Contraste: texto naranja pleno sobre blanco NO cumple AA → usar `naranja-oscuro` para
-  montos y `verde` para enlaces.
+- **Público: hombres 40–65 con poco manejo digital, en el teléfono.** Texto de lectura
+  `text-base` (17px), controles ≥48px, ícono siempre con texto, lenguaje simple ("Código",
+  no "SKU") y salida humana visible (WhatsApp/llamar, vía `config/tienda.ts`).
+- Tokens Tailwind: `carbon`, `grafito`, `gris-600`, `borde`, `gris-fondo`,
+  `naranja(-hover/-oscuro/-suave)`, `verde(-oscuro/-badge)`, `ambar`, `pedido`, `oferta`,
+  `whatsapp`. La escala `text-xs…xl` está subida un peldaño. **No usar hex sueltos en componentes.**
+- Clases del sistema (en `index.css`): `btn` + `btn-primario` (naranja con texto CARBÓN, UN
+  solo CTA por pantalla), `btn-verde`, `btn-secundario`, `btn-whatsapp`, `btn-grande`,
+  `campo`, `etiqueta`, `ayuda`, `opcion(-activa)`, `control-grande`, `stepper`, `enlace`,
+  `tarjeta`, `titulo-seccion`, `bajada-seccion`, `contenedor`.
+- Móvil: navegación en `BarraInferior` (fija abajo); el header no es fijo. Confirmaciones
+  con `useAviso().mostrar()` (toast `AvisoCarrito`). Fotos de producto vía `FotoProducto`.
+- Contraste: blanco sobre naranja NO cumple AA (2,7:1) → texto carbón en botones naranjos;
+  texto naranja sobre blanco → `naranja-oscuro`; enlaces en `verde`.
 - Motion: 150–250 ms, ease-out (`--ease-salida`), solo estado/feedback; clases
   `animar-entrada`, `animar-pulso`, `animar-favorito`. `prefers-reduced-motion` se respeta
   globalmente. Sin bounce, sin coreografías de carga (excepto hero y splash existentes).

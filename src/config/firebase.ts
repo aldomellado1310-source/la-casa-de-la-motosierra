@@ -42,4 +42,4 @@ export const storage = _storage;
 export const FUNCTIONS_URL = (import.meta.env.VITE_FUNCTIONS_URL as string | undefined) ?? '';
 
 /** Número de WhatsApp de la tienda */
-export const WHATSAPP_NUMERO = (import.meta.env.VITE_WHATSAPP_NUMERO as string | undefined) ?? '56912345678';
+export const WHATSAPP_NUMERO = (import.meta.env.VITE_WHATSAPP_NUMERO as string | undefined) ?? '56987568465';

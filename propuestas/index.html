@@ -1,0 +1,497 @@
+<!doctype html>
+<html lang="es-CL">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Propuestas de rediseño · La Casa de la Motosierra</title>
+<!-- Página de revisión interna (solo dev): no forma parte del build. -->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --carbon: #0E0F0E; --grafito: #1C1D1C; --gris: #51554F; --borde: #DCDFDB; --fondo: #F2F3F1;
+    --naranja: #EE8100; --naranja-oscuro: #AD5C00; --naranja-suave: #FFF1E0;
+    --verde: #1C6B34; --verde-oscuro: #124724; --verde-badge: #E5F2E8;
+    --ambar: #7A5800; --oferta: #C8261B; --wsp: #1FA855;
+    --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: 'Barlow', system-ui, sans-serif; background: #2A2C2A; color: #fff; }
+  button, input { font: inherit; }
+  .display { font-family: 'Barlow Condensed', sans-serif; font-weight: 800; text-transform: uppercase; }
+  .riel { display: flex; overflow-x: auto; scrollbar-width: none; }
+  .riel::-webkit-scrollbar { display: none; }
+
+  /* ── Marco de revisión ─────────────────────────── */
+  .barra-rev { position: sticky; top: 0; z-index: 10; background: #1A1B1A; border-bottom: 1px solid #3A3C3A; padding: 12px 16px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; }
+  .barra-rev h1 { margin: 0; font-size: 20px; }
+  .selector { display: flex; gap: 6px; flex-wrap: wrap; }
+  .selector button { min-height: 44px; padding: 0 16px; border-radius: 999px; border: 2px solid #4A4C4A; background: transparent; color: #fff; font-weight: 700; font-size: 16px; cursor: pointer; }
+  .selector button[aria-pressed="true"] { background: var(--naranja); border-color: var(--naranja); color: var(--carbon); }
+  .escenario { display: flex; gap: 40px; justify-content: center; align-items: flex-start; padding: 28px 16px 60px; flex-wrap: wrap; }
+  .columna { display: flex; flex-direction: column; gap: 12px; width: 390px; max-width: 100%; }
+  .columna header h2 { margin: 0; font-size: 22px; }
+  .columna header p { margin: 4px 0 0; color: #B9BDB8; font-size: 16px; line-height: 1.4; }
+  .telefono { width: 390px; max-width: 100%; height: 844px; border-radius: 36px; border: 10px solid #0A0A0A; overflow: hidden; position: relative; background: #fff; box-shadow: 0 8px 8px rgb(0 0 0 / 0.25); }
+  .pantalla { position: absolute; inset: 0; overflow-y: auto; overflow-x: hidden; scrollbar-width: none; }
+  .pantalla::-webkit-scrollbar { display: none; }
+  .escenario[data-ver]:not([data-ver="todas"]) .columna { display: none; }
+  .escenario[data-ver="a"] .columna[data-p="a"], .escenario[data-ver="b"] .columna[data-p="b"], .escenario[data-ver="c"] .columna[data-p="c"] { display: flex; }
+  /* En un teléfono real: una propuesta a pantalla completa */
+  @media (max-width: 700px) {
+    .escenario { padding: 0; gap: 0; }
+    .columna { width: 100%; }
+    .columna header { padding: 16px; }
+    .telefono { width: 100%; height: auto; min-height: 100vh; border: 0; border-radius: 0; box-shadow: none; }
+    .pantalla { position: relative; overflow: visible; }
+    .nav-fija { position: fixed !important; }
+    .selector button[data-ver="todas"] { display: none; }
+  }
+
+  /* ── A · Naranja a fondo ───────────────────────── */
+  .a { background: var(--fondo); color: var(--carbon); padding-bottom: 100px; }
+  .a-top { background: var(--naranja); padding: 16px 16px 28px; display: flex; flex-direction: column; gap: 18px; position: relative; overflow: hidden; }
+  .a-marca-fondo { position: absolute; right: -60px; top: 70px; width: 300px; opacity: 0.13; }
+  .logo { display: flex; flex-direction: column; line-height: 1; }
+  .logo .l1 { font-family: 'Barlow Condensed'; font-weight: 700; font-size: 13px; letter-spacing: 0.2em; }
+  .logo .barra { height: 4px; background: currentColor; margin: 3px 0; }
+  .logo .l2 { font-family: 'Barlow Condensed'; font-weight: 800; font-size: 26px; }
+  .fila { display: flex; align-items: center; justify-content: space-between; gap: 12px; position: relative; }
+  .a-llamar { display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 0 18px; border-radius: 999px; background: var(--carbon); color: #fff; font-weight: 700; font-size: 17px; text-decoration: none; }
+  .a-titulo { margin: 0; font-size: 50px; line-height: 0.92; position: relative; }
+  .a-buscar { display: flex; align-items: center; gap: 10px; background: #fff; border-radius: 16px; padding: 0 8px 0 16px; min-height: 60px; box-shadow: 0 6px 0 var(--carbon); position: relative; }
+  .a-buscar input { flex: 1; border: 0; outline: none; font-size: 18px; min-width: 0; }
+  .a-buscar span { background: var(--carbon); color: #fff; border-radius: 12px; padding: 12px 14px; font-weight: 700; }
+  .a-chips { gap: 8px; margin: 0 -16px; padding: 4px 16px; }
+  .a-chips a { flex-shrink: 0; min-height: 44px; display: flex; align-items: center; padding: 0 16px; border-radius: 999px; border: 2px solid var(--carbon); font-weight: 700; font-size: 16px; text-decoration: none; background: var(--naranja-suave); color: var(--carbon); transition: transform 150ms var(--ease); }
+  .a-chips a:active { transform: scale(0.95); }
+  .a-cinta { background: var(--carbon); color: #fff; overflow: hidden; padding: 12px 0; transform: rotate(-2deg); margin: -8px -10px 0; position: relative; z-index: 1; }
+  .a-cinta div { display: flex; gap: 28px; width: max-content; font-family: 'Barlow Condensed'; font-weight: 700; font-size: 20px; letter-spacing: 0.04em; text-transform: uppercase; white-space: nowrap; animation: cinta 18s linear infinite; }
+  .a-cinta b { color: var(--naranja); }
+  @keyframes cinta { to { transform: translateX(-50%); } }
+  .a-sec { padding: 28px 16px 8px; display: flex; flex-direction: column; gap: 14px; }
+  .a-sec h2 { margin: 0; font-size: 32px; line-height: 1; }
+  .a-sec p { margin: 0; font-size: 17px; color: var(--gris); }
+  .a-marcas { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .a-marcas button { min-height: 64px; border-radius: 14px; font-weight: 800; font-size: 18px; cursor: pointer; background: #fff; color: var(--carbon); border: 2px solid var(--borde); transition: transform 150ms var(--ease), background 150ms, box-shadow 150ms; }
+  .a-marcas button[aria-pressed="true"] { background: var(--carbon); color: #fff; border-color: var(--carbon); transform: translateY(-3px); box-shadow: 0 4px 0 var(--naranja); }
+  .a-cta { display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 60px; border-radius: 16px; background: var(--naranja); color: var(--carbon); font-weight: 800; font-size: 19px; text-decoration: none; box-shadow: 0 5px 0 var(--carbon); transition: transform 120ms, box-shadow 120ms; }
+  .a-cta:active { transform: translateY(4px); box-shadow: 0 1px 0 var(--carbon); }
+  .a-cabecera { display: flex; align-items: baseline; justify-content: space-between; padding: 0 16px; }
+  .a-cabecera a { font-weight: 700; font-size: 17px; color: var(--verde-oscuro); }
+  .a-productos { gap: 12px; padding: 8px 16px 16px; }
+  .a-prod { flex-shrink: 0; width: 200px; background: #fff; border-radius: 18px; border: 2px solid var(--carbon); overflow: hidden; display: flex; flex-direction: column; position: relative; }
+  .a-prod .foto { height: 130px; display: flex; align-items: center; justify-content: center; }
+  .a-prod .info { padding: 12px; display: flex; flex-direction: column; gap: 4px; }
+  .a-prod .nombre { font-weight: 700; font-size: 17px; line-height: 1.2; min-height: 41px; }
+  .a-prod .precio { font-family: 'Barlow Condensed'; font-weight: 800; font-size: 30px; line-height: 1; }
+  .a-prod button { margin-top: 6px; min-height: 48px; border-radius: 12px; border: 0; background: var(--carbon); color: #fff; font-weight: 700; font-size: 17px; cursor: pointer; }
+  .sticker { position: absolute; top: 10px; right: 10px; background: var(--oferta); color: #fff; font-family: 'Barlow Condensed'; font-weight: 800; font-size: 17px; padding: 6px 10px; border-radius: 10px; animation: flotar 3.2s ease-in-out infinite; }
+  @keyframes flotar { 0%,100% { transform: translateY(0) rotate(-6deg); } 50% { transform: translateY(-6px) rotate(-4deg); } }
+  .a-taller { margin: 12px 16px 0; border-radius: 22px; overflow: hidden; position: relative; min-height: 300px; display: flex; flex-direction: column; justify-content: flex-end; background: var(--carbon); }
+  .a-taller img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0.5; }
+  .a-taller div { position: relative; padding: 20px; display: flex; flex-direction: column; gap: 12px; color: #fff; }
+  .pildora { align-self: flex-start; background: var(--naranja); color: var(--carbon); font-weight: 700; font-size: 15px; padding: 5px 12px; border-radius: 999px; }
+  .btn-wsp { display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 56px; border-radius: 14px; background: var(--wsp); color: #fff; font-weight: 700; font-size: 18px; text-decoration: none; }
+  .a-nav { position: absolute; left: 12px; right: 12px; bottom: 14px; background: var(--carbon); border-radius: 22px; display: flex; padding: 8px; gap: 4px; z-index: 5; }
+  .a-nav button { flex: 1; min-height: 52px; padding: 0 2px; border: 0; border-radius: 16px; cursor: pointer; background: transparent; color: #fff; font-size: 13px; white-space: nowrap; font-weight: 700; transition: background 200ms var(--ease), color 200ms; }
+  .a-nav button[aria-current="page"] { background: var(--naranja); color: var(--carbon); }
+
+  /* ── B · Asistente ─────────────────────────────── */
+  .b { background: #141514; color: #fff; min-height: 100%; display: flex; flex-direction: column; }
+  .b-top { padding: 14px 16px 0; display: flex; align-items: center; gap: 12px; min-height: 64px; }
+  .b-volver { width: 48px; height: 48px; border-radius: 14px; border: 2px solid #3A3C3A; background: transparent; color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
+  .b-progreso { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+  .b-progreso span { font-size: 15px; color: #B9BDB8; font-weight: 600; }
+  .b-progreso .pista { height: 8px; border-radius: 999px; background: #2A2C2A; overflow: hidden; }
+  .b-progreso .lleno { height: 100%; border-radius: 999px; background: var(--naranja); transition: width 300ms var(--ease); }
+  .b-paso { padding: 20px 16px 28px; display: flex; flex-direction: column; gap: 16px; animation: entra 260ms var(--ease) both; }
+  @keyframes entra { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: none; } }
+  .b-paso h2 { margin: 0; font-size: 44px; line-height: 0.95; }
+  .b-saludo { margin: 0; font-size: 19px; color: #FFB35C; font-weight: 600; }
+  .b-sub { margin: 0; font-size: 17px; color: #B9BDB8; }
+  .b-foto { position: relative; height: 150px; border-radius: 20px; overflow: hidden; border: 0; padding: 0; cursor: pointer; text-align: left; background: var(--carbon); width: 100%; transition: transform 150ms var(--ease); }
+  .b-foto:active, .b-opcion:active { transform: scale(0.98); }
+  .b-foto img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0.55; }
+  .b-foto .txt { position: absolute; left: 16px; right: 16px; bottom: 14px; display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; color: #fff; }
+  .b-foto .t1 { display: block; font-size: 30px; line-height: 1; }
+  .b-foto .t2 { font-size: 17px; }
+  .circulo-flecha { width: 48px; height: 48px; flex-shrink: 0; border-radius: 999px; background: var(--naranja); display: flex; align-items: center; justify-content: center; }
+  .b-opcion { min-height: 88px; width: 100%; border-radius: 20px; border: 2px solid #3A3C3A; background: #1E201E; color: #fff; padding: 0 16px; display: flex; align-items: center; gap: 14px; cursor: pointer; text-align: left; transition: transform 150ms var(--ease), border-color 150ms; }
+  .b-opcion:hover { border-color: #6A6C6A; }
+  .b-icono { width: 52px; height: 52px; border-radius: 14px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .b-opcion .t1 { display: block; font-weight: 700; font-size: 20px; }
+  .b-opcion .t2 { font-size: 16px; color: #B9BDB8; }
+  .b-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .b-tipo { height: 190px; border-radius: 20px; border: 2px solid #3A3C3A; background: #1E201E; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; cursor: pointer; font-weight: 700; font-size: 21px; }
+  .b-tipo span { width: 88px; height: 88px; border-radius: 999px; background: var(--naranja); display: flex; align-items: center; justify-content: center; }
+  .b-marca { min-height: 80px; border-radius: 18px; border: 0; background: #fff; color: var(--carbon); font-family: 'Barlow Condensed'; font-weight: 800; font-size: 28px; text-transform: uppercase; cursor: pointer; }
+  .b-chips { display: flex; flex-wrap: wrap; gap: 10px; }
+  .b-chips button { min-height: 56px; padding: 0 20px; border-radius: 999px; border: 2px solid #fff; background: transparent; color: #fff; font-weight: 700; font-size: 19px; cursor: pointer; }
+  .b-chips button:hover { background: #fff; color: var(--carbon); }
+  .b-caja { border-radius: 18px; background: #1E201E; border: 2px solid #3A3C3A; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+  .b-enlace { min-height: 48px; border: 0; background: transparent; color: #FFB35C; font-weight: 700; font-size: 17px; text-decoration: underline; cursor: pointer; }
+  .b-secundario { min-height: 56px; border-radius: 16px; border: 2px dashed #3A3C3A; background: transparent; color: #fff; font-weight: 600; font-size: 18px; cursor: pointer; }
+  .b-resultado { background: var(--fondo); color: var(--carbon); flex: 1; border-radius: 26px 26px 0 0; margin-top: 8px; }
+  .b-resultado h2 { font-size: 34px; line-height: 1; }
+  .b-fila { background: #fff; border-radius: 16px; padding: 10px; display: flex; gap: 12px; align-items: center; }
+  .b-fila .foto { width: 64px; height: 64px; border-radius: 12px; background: var(--naranja-suave); flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+  .b-fila .n { font-weight: 700; font-size: 17px; line-height: 1.2; display: block; }
+  .b-fila .p { font-family: 'Barlow Condensed'; font-weight: 800; font-size: 24px; }
+  .b-mas { width: 52px; height: 52px; border-radius: 14px; border: 0; background: var(--naranja); color: var(--carbon); font-size: 28px; font-weight: 700; cursor: pointer; flex-shrink: 0; transition: background 150ms; }
+  .b-mas.ok { background: var(--verde); color: #fff; font-size: 22px; }
+  .etiqueta-ok { align-self: flex-start; background: var(--verde-badge); color: var(--verde-oscuro); font-weight: 700; font-size: 15px; padding: 6px 12px; border-radius: 999px; }
+  .b-otra { min-height: 52px; border-radius: 14px; border: 2px solid var(--carbon); background: transparent; font-weight: 700; font-size: 17px; cursor: pointer; }
+
+  /* ── C · Vitrina viva ──────────────────────────── */
+  .c { background: #fff; color: var(--grafito); padding-bottom: 96px; }
+  .c-top { background: var(--carbon); color: #fff; padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 12px; }
+  .c-top .logo .barra { background: var(--naranja); height: 3px; }
+  .c-top .logo .l2 { font-size: 22px; }
+  .c-envio { display: flex; align-items: center; gap: 6px; font-size: 15px; font-weight: 600; color: #FFB35C; }
+  .c-buscar { display: flex; align-items: center; gap: 10px; background: #fff; border-radius: 12px; padding: 0 14px; min-height: 52px; }
+  .c-buscar input { flex: 1; border: 0; outline: none; font-size: 18px; min-width: 0; }
+  .c-slide { margin: 16px 16px 0; height: 190px; border-radius: 22px; padding: 20px; display: flex; flex-direction: column; justify-content: space-between; transition: background 400ms var(--ease), color 400ms; }
+  .c-slide .baj { font-size: 16px; font-weight: 700; opacity: 0.9; }
+  .c-slide .tit { font-size: 40px; line-height: 0.95; max-width: 250px; }
+  .c-slide .bt { align-self: flex-start; min-height: 44px; display: flex; align-items: center; padding: 0 16px; border-radius: 999px; font-weight: 700; font-size: 16px; }
+  .c-puntos { display: flex; justify-content: center; gap: 8px; margin-top: 10px; }
+  .c-puntos button { height: 10px; width: 10px; border: 0; padding: 0; cursor: pointer; border-radius: 999px; background: var(--borde); transition: width 250ms var(--ease), background 250ms; }
+  .c-puntos button[aria-current="true"] { width: 28px; background: var(--carbon); }
+  .c-cats { gap: 14px; padding: 18px 16px 6px; }
+  .c-cats a { flex-shrink: 0; width: 76px; display: flex; flex-direction: column; align-items: center; gap: 8px; text-decoration: none; color: var(--grafito); font-size: 15px; font-weight: 600; text-align: center; }
+  .c-cats span { width: 72px; height: 72px; border-radius: 999px; display: flex; align-items: center; justify-content: center; border: 3px solid var(--naranja); }
+  .c-dia { margin: 16px 16px 0; border-radius: 20px; background: var(--naranja-suave); padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+  .c-reloj { display: flex; align-items: center; gap: 6px; background: var(--oferta); color: #fff; border-radius: 10px; padding: 6px 10px; font-weight: 700; font-size: 17px; font-variant-numeric: tabular-nums; animation: latido 1.6s ease-in-out infinite; }
+  @keyframes latido { 50% { transform: scale(1.06); } }
+  .c-item { background: #fff; border-radius: 16px; padding: 12px; display: flex; gap: 12px; align-items: center; }
+  .c-item .foto { width: 96px; height: 96px; border-radius: 12px; background: var(--fondo); flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+  .c-cta { min-height: 56px; border-radius: 14px; border: 0; background: var(--naranja); color: var(--carbon); font-weight: 800; font-size: 19px; cursor: pointer; }
+  .c-opin { margin: 20px 16px 0; display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-radius: 16px; border: 2px solid var(--borde); font-size: 17px; line-height: 1.35; }
+  .c-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .c-prod { border-radius: 16px; border: 1px solid var(--borde); overflow: hidden; display: flex; flex-direction: column; }
+  .c-prod .foto { height: 130px; background: var(--fondo); display: flex; align-items: center; justify-content: center; }
+  .c-prod .info { padding: 10px; display: flex; flex-direction: column; gap: 4px; }
+  .c-prod button { margin-top: 4px; min-height: 48px; border-radius: 12px; border: 2px solid var(--naranja); background: #fff; font-weight: 700; font-size: 17px; cursor: pointer; }
+  .c-nav { position: absolute; left: 0; right: 0; bottom: 0; background: #fff; border-top: 1px solid var(--borde); display: flex; height: 72px; z-index: 5; }
+  .c-nav a { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-decoration: none; font-size: 14px; font-weight: 700; color: var(--gris); }
+  .c-nav a i { width: 26px; height: 26px; border-radius: 8px; background: var(--borde); }
+  .c-nav a[aria-current="page"] { color: var(--carbon); }
+  .c-nav a[aria-current="page"] i { background: var(--naranja); }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="barra-rev">
+  <h1 style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">Propuestas · ronda 1 <a href="./ronda-2.html" style="font-size:16px;color:#FFB35C;font-weight:600">Ver ronda 2 (D, E, F) →</a></h1>
+  <div class="selector" role="group" aria-label="Qué propuesta ver">
+    <button data-ver="todas" aria-pressed="true">Las tres</button>
+    <button data-ver="a" aria-pressed="false">A · Naranja a fondo</button>
+    <button data-ver="b" aria-pressed="false">B · Asistente</button>
+    <button data-ver="c" aria-pressed="false">C · Vitrina viva</button>
+  </div>
+</div>
+
+<main class="escenario" id="escenario" data-ver="todas">
+
+  <!-- ═════════ A ═════════ -->
+  <section class="columna" data-p="a">
+    <header>
+      <h2>A · Naranja a fondo</h2>
+      <p>Portada naranja completa, cinta en movimiento, marcas que saltan al tocarlas, carrusel de ofertas con sticker.</p>
+    </header>
+    <div class="telefono"><div class="pantalla">
+      <div class="a">
+        <div class="a-top">
+          <svg class="a-marca-fondo" viewBox="0 0 200 120" aria-hidden="true"><rect x="4" y="62" width="130" height="20" rx="10" fill="#0E0F0E"/><path d="M116 40h54a18 18 0 0 1 18 18v26a12 12 0 0 1-12 12h-58a12 12 0 0 1-12-12V52a12 12 0 0 1 10-12z" fill="#0E0F0E"/><path d="M128 40V22a8 8 0 0 1 8-8h28a8 8 0 0 1 8 8v18h-12V26h-20v14z" fill="#0E0F0E"/></svg>
+          <div class="fila">
+            <div class="logo"><span class="l1">LA CASA DE LA</span><span class="barra"></span><span class="l2">MOTOSIERRA</span></div>
+            <a class="a-llamar" href="#"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#EE8100" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h3.5l1.8 4.5-2.3 1.4a11 11 0 0 0 7.1 7.1l1.4-2.3L21 15.5V19a2 2 0 0 1-2 2A16 16 0 0 1 3 5a2 2 0 0 1 2-2z"/></svg>Llamar</a>
+          </div>
+          <h2 class="a-titulo display">¿Qué le hace falta a tu máquina?</h2>
+          <label class="a-buscar">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0E0F0E" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+            <input aria-label="¿Qué repuesto buscas?" placeholder="Cadena, filtro, bujía…" />
+            <span>Buscar</span>
+          </label>
+          <div class="riel a-chips">
+            <a href="#">Cadenas</a><a href="#">Espadas</a><a href="#">Filtros</a><a href="#">Bujías</a><a href="#">Aceites</a><a href="#">Carburación</a>
+          </div>
+        </div>
+        <div class="a-cinta" aria-hidden="true"><div>
+          <span>Retiro gratis en Aysén</span><b>✦</b><span>Envío a todo Chile</span><b>✦</b><span>Pago con Webpay</span><b>✦</b><span>Taller propio</span><b>✦</b>
+          <span>Retiro gratis en Aysén</span><b>✦</b><span>Envío a todo Chile</span><b>✦</b><span>Pago con Webpay</span><b>✦</b><span>Taller propio</span><b>✦</b>
+        </div></div>
+
+        <div class="a-sec">
+          <h2 class="display">Elige tu marca</h2>
+          <p>Te mostramos solo lo que le sirve.</p>
+          <div class="a-marcas" id="a-marcas"></div>
+          <a class="a-cta" href="#" id="a-cta">Ver repuestos para Stihl <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0E0F0E" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+        </div>
+
+        <div class="a-sec" style="padding-left: 0; padding-right: 0">
+          <div class="a-cabecera"><h2 class="display">Lo más pedido</h2><a href="#">Ver todo</a></div>
+          <div class="riel a-productos" id="a-productos"></div>
+        </div>
+
+        <div class="a-taller">
+          <img src="/hero.webp" alt="" />
+          <div>
+            <span class="pildora">Taller en Puerto Aysén</span>
+            <h2 class="display" style="margin: 0; font-size: 38px; line-height: 0.95">¿Tu máquina falla?</h2>
+            <p style="margin: 0; font-size: 17px; line-height: 1.4">Mándanos un video y te decimos qué tiene y cuánto cuesta arreglarla.</p>
+            <a class="btn-wsp" href="#">Enviar video por WhatsApp</a>
+          </div>
+        </div>
+      </div>
+    </div><nav class="a-nav nav-fija" id="a-nav" aria-label="Navegación"></nav></div>
+  </section>
+
+  <!-- ═════════ B ═════════ -->
+  <section class="columna" data-p="b">
+    <header>
+      <h2>B · Asistente paso a paso</h2>
+      <p>Una pregunta por pantalla: qué necesitas, qué máquina, qué marca, qué modelo. Toca las opciones: funciona.</p>
+    </header>
+    <div class="telefono"><div class="pantalla" style="background: #141514"><div class="b" id="b"></div></div></div>
+  </section>
+
+  <!-- ═════════ C ═════════ -->
+  <section class="columna" data-p="c">
+    <header>
+      <h2>C · Vitrina viva</h2>
+      <p>Estilo Mercado Libre: carrusel que avanza solo, categorías en círculos, oferta del día con cuenta regresiva.</p>
+    </header>
+    <div class="telefono"><div class="pantalla">
+      <div class="c">
+        <div class="c-top">
+          <div class="fila">
+            <div class="logo"><span class="l1" style="font-size: 12px">LA CASA DE LA</span><span class="barra"></span><span class="l2">MOTOSIERRA</span></div>
+            <span class="c-envio"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-6-5.5-6-10a6 6 0 1 1 12 0c0 4.5-6 10-6 10z"/><circle cx="12" cy="11" r="2"/></svg>Enviar a Aysén</span>
+          </div>
+          <label class="c-buscar">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#51554F" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+            <input aria-label="¿Qué repuesto buscas?" placeholder="Busca repuestos, marcas y más" />
+          </label>
+        </div>
+
+        <div class="c-slide" id="c-slide"><span class="baj"></span><span class="tit display"></span><span class="bt"></span></div>
+        <div class="c-puntos" id="c-puntos" aria-label="Promociones"></div>
+
+        <div class="riel c-cats" id="c-cats"></div>
+
+        <div class="c-dia">
+          <div class="fila">
+            <span class="display" style="font-size: 28px; line-height: 1">Oferta del día</span>
+            <span class="c-reloj"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span id="c-reloj">05:12:40</span></span>
+          </div>
+          <div class="c-item">
+            <span class="foto"><svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="#51554F" stroke-width="1.5"><path d="M12 2.5l8.2 4.75v9.5L12 21.5l-8.2-4.75v-9.5z"/><circle cx="12" cy="12" r="3.2"/></svg></span>
+            <span style="display: flex; flex-direction: column; gap: 2px">
+              <span style="font-weight: 700; font-size: 18px; line-height: 1.2">Acelerador HQV61</span>
+              <span style="font-size: 15px; color: var(--verde-oscuro); font-weight: 600">En stock (8)</span>
+              <span class="display" style="font-size: 30px">[PRECIO OFERTA]</span>
+              <s style="font-size: 15px; color: var(--gris)">$10.000</s>
+            </span>
+          </div>
+          <button class="c-cta">Agregar al carrito</button>
+        </div>
+
+        <div class="c-opin">
+          <span style="display: flex; flex-direction: column; align-items: center; flex-shrink: 0">
+            <span class="display" style="font-size: 36px; line-height: 1">[4,9]</span>
+            <span style="color: var(--naranja); font-size: 18px; letter-spacing: 2px" aria-label="Calificación en estrellas">★★★★★</span>
+          </span>
+          <span>Opiniones en Google de [N] clientes de la Región de Aysén</span>
+        </div>
+
+        <div style="padding: 22px 16px 0; display: flex; flex-direction: column; gap: 12px">
+          <div class="fila"><h2 class="display" style="margin: 0; font-size: 30px; line-height: 1">Te puede servir</h2><a href="#" style="font-weight: 700; font-size: 17px; color: var(--verde)">Ver todo</a></div>
+          <div class="c-grid" id="c-grid"></div>
+        </div>
+      </div>
+    </div><nav class="c-nav nav-fija" aria-label="Navegación">
+        <a href="#" aria-current="page"><i></i>Inicio</a><a href="#"><i></i>Repuestos</a><a href="#"><i></i>Mi máquina</a><a href="#"><i></i>Carrito</a><a href="#"><i></i>Menú</a>
+      </nav></div>
+  </section>
+</main>
+
+<script>
+  // Íconos compartidos
+  const tuerca = (color, t) => `<svg width="${t}" height="${t}" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5l8.2 4.75v9.5L12 21.5l-8.2-4.75v-9.5z"/><circle cx="12" cy="12" r="3.2"/></svg>`;
+  const flecha = (color) => `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>`;
+  // Productos reales del catálogo importado
+  const PRODUCTOS = [
+    { n: 'Salvamano MS310-390-260', s: 'Quedan 1', p: '$20.000', oferta: true },
+    { n: 'Aceite mezcla Anteros 125cc', s: 'En stock (76)', p: '$2.900' },
+    { n: 'Acelerador HQV61', s: 'En stock (8)', p: '$10.000', oferta: true },
+    { n: 'Amortiguador 380-381 kit', s: 'Quedan 1', p: '$15.000' },
+  ];
+
+  // Selector de propuesta (en pantallas angostas: una a la vez, parte en A)
+  const escenario = document.getElementById('escenario');
+  if (window.matchMedia('(max-width: 700px)').matches) {
+    escenario.dataset.ver = 'a';
+    document.querySelectorAll('.selector button').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.ver === 'a')));
+  }
+  document.querySelectorAll('.selector button').forEach((b) => b.addEventListener('click', () => {
+    escenario.dataset.ver = b.dataset.ver;
+    window.scrollTo(0, 0);
+    document.querySelectorAll('.selector button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+  }));
+
+  // ── A ──
+  (() => {
+    const marcas = ['Stihl', 'Husqvarna', 'Honda', 'Castor', 'Genérica', 'Otra'];
+    const cont = document.getElementById('a-marcas');
+    const cta = document.getElementById('a-cta');
+    let actual = 'Stihl';
+    const pintar = () => {
+      cont.innerHTML = marcas.map((m) => `<button aria-pressed="${m === actual}">${m}</button>`).join('');
+      cont.querySelectorAll('button').forEach((b, i) => b.addEventListener('click', () => { actual = marcas[i]; pintar(); }));
+      cta.firstChild.textContent = actual === 'Otra' ? 'Consultar por WhatsApp ' : `Ver repuestos para ${actual} `;
+    };
+    pintar();
+    const fondos = ['#FFF1E0', '#E5F2E8', '#FCF3D9', '#F2F3F1'];
+    document.getElementById('a-productos').innerHTML = PRODUCTOS.map((p, i) => `
+      <div class="a-prod">
+        <div class="foto" style="background:${fondos[i]}">${tuerca('#0E0F0E', 70)}</div>
+        ${p.oferta ? '<span class="sticker">OFERTA</span>' : ''}
+        <div class="info">
+          <span class="nombre">${p.n}</span>
+          <span style="font-size:15px;font-weight:600;color:${p.s.startsWith('Quedan') ? '#7A5800' : '#124724'}">${p.s}</span>
+          <span class="precio">${p.p}</span>
+          <button>Agregar</button>
+        </div>
+      </div>`).join('');
+    const nav = document.getElementById('a-nav');
+    let tab = 'Inicio';
+    const pintarNav = () => {
+      nav.innerHTML = ['Inicio', 'Repuestos', 'Mi máquina', 'Carrito', 'Menú'].map((t) => `<button ${t === tab ? 'aria-current="page"' : ''}>${t}</button>`).join('');
+      nav.querySelectorAll('button').forEach((b) => b.addEventListener('click', () => { tab = b.textContent; pintarNav(); }));
+    };
+    pintarNav();
+  })();
+
+  // ── B ──
+  (() => {
+    const raiz = document.getElementById('b');
+    const MODELOS = {
+      Stihl: ['MS 170', 'MS 250', 'MS 310', 'MS 382', 'FS 120', 'FS 280'],
+      Husqvarna: ['61', '268', '365', '445', '372 XP'],
+      Honda: ['GX35', 'UMK 435'],
+      Castor: ['Todos'],
+      'Genérica': ['52cc', '58cc'],
+    };
+    const e = { paso: 0, tipo: 'motosierra', marca: 'Stihl', modelo: '' };
+    const ir = (cambios) => { Object.assign(e, cambios); pintar(); raiz.parentElement.scrollTop = 0; };
+    const logo = `<div class="logo"><span class="l1" style="font-size:12px">LA CASA DE LA</span><span class="barra" style="background:#EE8100;height:3px"></span><span class="l2" style="font-size:22px">MOTOSIERRA</span></div>`;
+    const cabecera = () => {
+      if (e.paso === 0) return `<div class="b-top">${logo}</div>`;
+      const n = Math.min(e.paso, 3);
+      const progreso = e.paso <= 3 ? `<div class="b-progreso"><span>Paso ${n} de 3</span><div class="pista"><div class="lleno" style="width:${Math.round(n / 3 * 100)}%"></div></div></div>` : '';
+      return `<div class="b-top"><button class="b-volver" data-accion="volver" aria-label="Volver"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 6l-6 6 6 6"/></svg></button>${progreso}</div>`;
+    };
+    const pasos = [
+      () => `<div class="b-paso">
+        <p class="b-saludo">Hola, te ayudamos a encontrarlo.</p>
+        <h2 class="display">¿Qué necesitas hoy?</h2>
+        <button class="b-foto" data-ir="1"><img src="/hero.webp" alt="" /><span class="txt"><span><span class="t1 display">Un repuesto</span><span class="t2">para mi motosierra o desbrozadora</span></span><span class="circulo-flecha">${flecha('#0E0F0E')}</span></span></button>
+        <button class="b-opcion"><span class="b-icono" style="background:#E5F2E8"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#124724" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a4.5 4.5 0 1 0-5 7.4L4 19.4V21h3l6.3-6.3a4.5 4.5 0 0 0 5-7.4z"/></svg></span><span><span class="t1">Arreglar mi máquina</span><span class="t2">Servicio técnico en el taller</span></span></button>
+        <button class="b-opcion"><span class="b-icono" style="background:#FFF1E0"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#AD5C00" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12V4h8l10 10-8 8z"/><circle cx="7.5" cy="8.5" r="1.5"/></svg></span><span><span class="t1">Ver ofertas</span><span class="t2">Precios rebajados esta semana</span></span></button>
+      </div>`,
+      () => `<div class="b-paso">
+        <h2 class="display">¿Qué máquina tienes?</h2>
+        <div class="b-grid2">
+          ${['Motosierra', 'Desbrozadora'].map((t) => `<button class="b-tipo" data-tipo="${t.toLowerCase()}"><span><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#0E0F0E" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 15h9l5-6h-6l-1.5 2H5z"/><circle cx="7" cy="18" r="1.6"/><circle cx="13" cy="18" r="1.6"/></svg></span>${t}</button>`).join('')}
+        </div>
+        <button class="b-secundario" data-ir="2">Otra máquina / No estoy seguro</button>
+      </div>`,
+      () => `<div class="b-paso">
+        <h2 class="display">¿De qué marca es tu ${e.tipo}?</h2>
+        <div class="b-grid2">${Object.keys(MODELOS).map((m) => `<button class="b-marca" data-marca="${m}">${m}</button>`).join('')}</div>
+      </div>`,
+      () => `<div class="b-paso">
+        <h2 class="display">¿Qué modelo de ${e.marca}?</h2>
+        <p class="b-sub">Está en una etiqueta en el cuerpo del motor.</p>
+        <div class="b-chips">${MODELOS[e.marca].map((m) => `<button data-modelo="${m}">${m}</button>`).join('')}</div>
+        <div class="b-caja">
+          <span style="font-weight:700;font-size:19px">¿No encuentras el modelo?</span>
+          <span style="font-size:17px;color:#B9BDB8">Sácale una foto a la etiqueta y te decimos cuál es.</span>
+          <a class="btn-wsp" href="#" style="min-height:52px">Enviar foto por WhatsApp</a>
+          <button class="b-enlace" data-modelo="">Ver todo lo de ${e.marca}</button>
+        </div>
+      </div>`,
+      () => `<div class="b-paso b-resultado">
+        <span class="etiqueta-ok">Le sirven a tu máquina</span>
+        <h2 class="display">Repuestos para tu ${e.marca} ${e.modelo}</h2>
+        ${PRODUCTOS.map((p) => `<div class="b-fila"><span class="foto">${tuerca('#AD5C00', 32)}</span><span style="flex:1;min-width:0"><span class="n">${p.n}</span><span class="p">${p.p}</span></span><button class="b-mas" aria-label="Agregar ${p.n}">+</button></div>`).join('')}
+        <button class="b-otra" data-ir="0">Buscar para otra máquina</button>
+      </div>`,
+    ];
+    const pintar = () => {
+      raiz.innerHTML = cabecera() + pasos[e.paso]();
+      raiz.querySelectorAll('[data-ir]').forEach((b) => b.addEventListener('click', () => ir({ paso: +b.dataset.ir })));
+      raiz.querySelectorAll('[data-tipo]').forEach((b) => b.addEventListener('click', () => ir({ paso: 2, tipo: b.dataset.tipo })));
+      raiz.querySelectorAll('[data-marca]').forEach((b) => b.addEventListener('click', () => ir({ paso: 3, marca: b.dataset.marca })));
+      raiz.querySelectorAll('[data-modelo]').forEach((b) => b.addEventListener('click', () => ir({ paso: 4, modelo: b.dataset.modelo })));
+      raiz.querySelectorAll('[data-accion="volver"]').forEach((b) => b.addEventListener('click', () => ir({ paso: Math.max(0, e.paso - 1) })));
+      raiz.querySelectorAll('.b-mas').forEach((b) => b.addEventListener('click', () => { b.classList.add('ok'); b.textContent = '✓'; }));
+    };
+    pintar();
+  })();
+
+  // ── C ──
+  (() => {
+    const SLIDES = [
+      { baj: 'Para tu próxima temporada', tit: 'Cadenas y espadas', bt: 'Ver cadenas', f: '#EE8100', t: '#0E0F0E', bf: '#0E0F0E', bc: '#FFFFFF' },
+      { baj: 'Taller en Puerto Aysén', tit: 'Servicio técnico', bt: 'Agendar por WhatsApp', f: '#1C6B34', t: '#FFFFFF', bf: '#FFFFFF', bc: '#124724' },
+      { baj: 'Costo claro antes de pagar', tit: 'Envío a todo Chile', bt: 'Cómo funciona', f: '#0E0F0E', t: '#FFFFFF', bf: '#EE8100', bc: '#0E0F0E' },
+    ];
+    const slide = document.getElementById('c-slide');
+    const puntos = document.getElementById('c-puntos');
+    let i = 0;
+    const pintar = () => {
+      const s = SLIDES[i];
+      slide.style.background = s.f; slide.style.color = s.t;
+      slide.querySelector('.baj').textContent = s.baj;
+      slide.querySelector('.tit').textContent = s.tit;
+      const bt = slide.querySelector('.bt'); bt.textContent = s.bt; bt.style.background = s.bf; bt.style.color = s.bc;
+      puntos.innerHTML = SLIDES.map((_, k) => `<button aria-label="Promoción ${k + 1}" aria-current="${k === i}"></button>`).join('');
+      puntos.querySelectorAll('button').forEach((b, k) => b.addEventListener('click', () => { i = k; pintar(); }));
+    };
+    pintar();
+    setInterval(() => { i = (i + 1) % SLIDES.length; pintar(); }, 4000);
+
+    const colores = ['#FFF1E0', '#E5F2E8', '#FCF3D9', '#E8EEF6', '#F2F3F1', '#FDEBD9'];
+    document.getElementById('c-cats').innerHTML = ['Cadenas', 'Espadas', 'Filtros', 'Bujías', 'Aceites', 'Seguridad']
+      .map((n, k) => `<a href="#"><span style="background:${colores[k]}">${tuerca('#0E0F0E', 34)}</span>${n}</a>`).join('');
+
+    let resta = 5 * 3600 + 12 * 60 + 40;
+    const reloj = document.getElementById('c-reloj');
+    const dos = (n) => String(n).padStart(2, '0');
+    setInterval(() => {
+      resta = Math.max(0, resta - 1);
+      reloj.textContent = `${dos(Math.floor(resta / 3600))}:${dos(Math.floor(resta % 3600 / 60))}:${dos(resta % 60)}`;
+    }, 1000);
+
+    document.getElementById('c-grid').innerHTML = [...PRODUCTOS.slice(0, 3), { n: 'Aceite 10W30', p: '$12.000' }].map((p) => `
+      <div class="c-prod">
+        <span class="foto">${tuerca('#51554F', 48)}</span>
+        <span class="info">
+          <span style="font-weight:600;font-size:17px;line-height:1.2;min-height:41px">${p.n}</span>
+          <span class="display" style="font-size:26px;line-height:1">${p.p}</span>
+          <span style="font-size:14px;color:#124724;font-weight:600">Retiro gratis en tienda</span>
+          <button>Agregar</button>
+        </span>
+      </div>`).join('');
+  })();
+</script>
+</body>
+</html>

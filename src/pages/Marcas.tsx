@@ -45,9 +45,9 @@ export default function Marcas() {
   useEffect(cargar, []);
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8">
+    <div className="contenedor max-w-7xl py-8">
       <h1 className="titulo-seccion mb-2">Repuestos por marca</h1>
-      <p className="mb-6 max-w-2xl text-sm text-gris-600">
+      <p className="mb-6 max-w-2xl text-base text-gris-600">
         Elige la marca de tu máquina y filtra por modelo para ver solo los repuestos compatibles.
         ¿No aparece tu modelo? Escríbenos por WhatsApp y lo verificamos por ti.
       </p>
@@ -59,7 +59,7 @@ export default function Marcas() {
           <div key={m.nombre} className="tarjeta flex flex-col">
             <div className="flex items-center justify-between">
               <h2 className="font-display text-xl font-bold uppercase tracking-wide">{m.nombre}</h2>
-              <span className="rounded-full bg-verde-badge px-2.5 py-1 text-xs font-bold text-verde-oscuro">
+              <span className="rounded-full bg-verde-badge px-2.5 py-1 text-sm font-bold text-verde-oscuro">
                 {m.productos} repuesto{m.productos === 1 ? '' : 's'}
               </span>
             </div>
@@ -69,16 +69,16 @@ export default function Marcas() {
                   <Link
                     key={mod}
                     to={`/tienda?marca=${encodeURIComponent(m.nombre)}&modelo=${encodeURIComponent(mod)}`}
-                    className="rounded-full border border-borde px-3 py-1 text-xs font-medium text-grafito transition-colors hover:border-verde hover:text-verde"
+                    className="rounded-full border border-borde px-3 py-1 text-sm font-medium text-grafito transition-colors hover:border-verde hover:text-verde"
                   >
                     {mod}
                   </Link>
                 ))}
               </div>
             ) : (
-              <p className="mt-3 text-xs text-gris-600">Consumibles universales para toda la marca.</p>
+              <p className="mt-3 text-sm text-gris-600">Consumibles universales para toda la marca.</p>
             )}
-            <Link to={`/tienda?marca=${encodeURIComponent(m.nombre)}`} className="btn-verde mt-4 w-full text-sm">
+            <Link to={`/tienda?marca=${encodeURIComponent(m.nombre)}`} className="btn-verde mt-4 w-full text-base">
               Ver todo {m.nombre}
             </Link>
           </div>

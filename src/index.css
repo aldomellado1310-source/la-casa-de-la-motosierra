@@ -13,7 +13,10 @@
     -webkit-tap-highlight-color: transparent;
   }
   body {
-    @apply bg-white text-grafito font-sans antialiased;
+    @apply bg-white font-sans text-base text-grafito antialiased;
+  }
+  p {
+    text-wrap: pretty;
   }
   h1, h2, h3 {
     text-wrap: balance;
@@ -22,7 +25,7 @@
   a:focus-visible,
   button:focus-visible,
   [role='button']:focus-visible {
-    outline: 2px solid #1C6B34;
+    outline: 3px solid #1C6B34;
     outline-offset: 2px;
     border-radius: 4px;
   }
@@ -37,31 +40,104 @@
 }
 
 @layer components {
-  /* CTA primario naranja — la única acción principal por pantalla */
+  /* Contenedor de página: gutter 16px móvil / 24px escritorio */
+  .contenedor {
+    @apply mx-auto w-full max-w-7xl px-4 sm:px-6;
+  }
+
+  /* Botones: altos (≥48px) y con texto de 17px — pensados para dedos
+     gruesos y vista cansada. Radio 10px en todo el sistema. */
+  .btn {
+    @apply inline-flex min-h-[48px] select-none items-center justify-center gap-2 rounded-[14px] px-5 py-2.5 text-base font-bold leading-tight focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  /* CTA primario naranja con texto carbón (7:1) y sombra dura que se
+     "hunde" al presionar — UNA acción principal por pantalla */
   .btn-primario {
-    @apply inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg bg-naranja px-5 py-2.5 text-sm font-bold text-white transition-colors duration-150 hover:bg-naranja-oscuro focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-naranja disabled:cursor-not-allowed disabled:opacity-50;
+    @apply btn border-2 border-carbon bg-naranja text-carbon shadow-dura hover:bg-naranja-hover focus-visible:outline-carbon disabled:border-borde disabled:bg-borde disabled:text-gris-600 disabled:opacity-100 disabled:shadow-none;
   }
-  /* Botón estructural verde (buscador de compatibilidad, confirmaciones) */
+  /* Oscuro: acción repetida en tarjetas ("Agregar") */
+  .btn-oscuro {
+    @apply btn bg-carbon text-white hover:bg-grafito focus-visible:outline-naranja;
+  }
+  /* Verde: confirmaciones y acciones estructurales */
   .btn-verde {
-    @apply inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg bg-verde px-5 py-2.5 text-sm font-bold text-white transition-colors duration-150 hover:bg-verde-oscuro focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-verde disabled:cursor-not-allowed disabled:opacity-50;
+    @apply btn bg-verde text-white hover:bg-verde-oscuro focus-visible:outline-verde;
   }
-  /* Secundario: blanco con borde */
+  /* Secundario: blanco con borde marcado */
   .btn-secundario {
-    @apply inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg border border-borde bg-white px-5 py-2.5 text-sm font-semibold text-grafito transition-colors duration-150 hover:border-grafito focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-verde disabled:cursor-not-allowed disabled:opacity-50;
+    @apply btn border-2 border-carbon bg-white text-carbon hover:bg-gris-fondo focus-visible:outline-verde;
   }
-  /* Campo de formulario */
+  /* WhatsApp: el canal preferido del cliente de la zona */
+  .btn-whatsapp {
+    @apply btn bg-whatsapp text-white hover:bg-whatsapp-oscuro focus-visible:outline-whatsapp;
+  }
+  /* Botón grande para la acción final de un flujo (pagar, agregar) */
+  .btn-grande {
+    @apply min-h-[56px] px-6 text-lg;
+  }
+
+  /* Campo de formulario: 52px de alto, texto 17px (evita zoom en iOS) */
   .campo {
-    @apply w-full min-h-[44px] rounded-lg border border-borde bg-white px-3 py-2.5 text-base text-grafito outline-none transition-colors duration-150 placeholder:text-gris-600 focus:border-verde focus:ring-2 focus:ring-verde/25;
+    @apply w-full min-h-[52px] rounded-[12px] border-2 border-carbon/30 bg-white px-4 py-3 text-base text-grafito outline-none transition-colors duration-150 placeholder:text-gris-600 focus:border-verde focus:ring-4 focus:ring-verde/20 disabled:bg-gris-fondo disabled:text-gris-600;
+  }
+  /* Select con flecha propia, grande y visible */
+  select.campo {
+    @apply appearance-none bg-no-repeat pr-12;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231C1D1C' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-position: right 14px center;
+    background-size: 22px;
   }
   .etiqueta {
-    @apply mb-1 block text-sm font-semibold text-grafito;
+    @apply mb-1.5 block text-base font-semibold text-grafito;
+  }
+  /* Ayuda bajo un campo o sección */
+  .ayuda {
+    @apply mt-1 text-sm text-gris-600;
   }
   .tarjeta {
-    @apply rounded-xl border border-borde bg-white p-4;
+    @apply rounded-2xl border border-borde bg-white p-4 sm:p-5;
+  }
+  /* Riel horizontal deslizable (carruseles), sin barra de scroll visible */
+  .riel {
+    @apply flex overflow-x-auto overscroll-x-contain;
+    scrollbar-width: none;
+    scroll-snap-type: x proximity;
+  }
+  .riel::-webkit-scrollbar {
+    display: none;
+  }
+  .riel > * {
+    scroll-snap-align: start;
   }
   /* Título de sección en la display condensada del logo */
   .titulo-seccion {
-    @apply font-display text-2xl font-bold uppercase tracking-wide text-grafito sm:text-3xl;
+    @apply font-display text-[2rem] font-extrabold uppercase leading-none tracking-[0.01em] text-carbon sm:text-[2.6rem];
+  }
+  /* Subtítulo explicativo bajo un título de sección */
+  .bajada-seccion {
+    @apply mt-2 max-w-2xl text-base text-gris-600;
+  }
+  /* Enlace de texto: verde, subrayado para que se note que es enlace */
+  .enlace {
+    @apply font-semibold text-verde underline decoration-2 underline-offset-4 hover:text-verde-oscuro;
+  }
+  /* Selector −/+ de cantidad */
+  .stepper {
+    @apply inline-flex items-stretch overflow-hidden rounded-[14px] border-2 border-carbon bg-white;
+  }
+  .stepper > button {
+    @apply flex w-12 items-center justify-center text-2xl font-bold text-grafito transition-colors hover:bg-gris-fondo active:bg-borde disabled:opacity-40;
+  }
+  /* Opción seleccionable grande (radio/checkbox envuelto en label) */
+  .opcion {
+    @apply flex cursor-pointer items-start gap-3 rounded-2xl border-2 border-borde bg-white p-4 transition-[border-color,box-shadow,transform] duration-150 hover:border-carbon;
+  }
+  .opcion-activa {
+    @apply -translate-y-0.5 border-carbon bg-naranja-suave shadow-dura hover:border-carbon;
+  }
+  /* Radio/checkbox grandes (24px) */
+  .control-grande {
+    @apply mt-0.5 h-6 w-6 shrink-0 accent-carbon;
   }
 
   /* ── Sistema de motion ──────────────────────────────────
@@ -88,10 +164,15 @@
 
 @layer utilities {
   /* Feedback táctil de presión en todos los botones del sistema */
-  .btn-primario:active, .btn-verde:active, .btn-secundario:active {
+  :is(.btn, .btn-verde, .btn-whatsapp, .btn-oscuro):active:not(:disabled) {
     transform: scale(0.97);
   }
-  .btn-primario, .btn-verde, .btn-secundario {
+  /* Los botones con sombra dura se hunden en vez de achicarse */
+  .btn-primario:active:not(:disabled) {
+    transform: translateY(3px);
+    box-shadow: 0 1px 0 theme(colors.carbon);
+  }
+  :is(.btn, .btn-primario, .btn-verde, .btn-secundario, .btn-whatsapp, .btn-oscuro) {
     transition-property: color, background-color, border-color, transform, box-shadow;
     transition-duration: 150ms;
     transition-timing-function: var(--ease-salida);
@@ -130,7 +211,7 @@
 }
 .grupo-logo:hover .cadena-logo {
   animation: correr-cadena 450ms linear infinite;
-  stroke: #EE8100;
+  stroke: theme(colors.naranja.DEFAULT);
 }
 
 /* La barra naranja del logo entra creciendo desde la izquierda al cargar */
@@ -146,7 +227,7 @@
    overlay se funde al salir */
 .logo-animado .cadena-logo {
   animation: correr-cadena 450ms linear infinite;
-  stroke: #EE8100;
+  stroke: theme(colors.naranja.DEFAULT);
 }
 @keyframes fundido-salida {
   to { opacity: 0; }
@@ -164,4 +245,19 @@
 .animar-kenburns {
   animation: ken-burns 30s ease-in-out infinite alternate;
   will-change: transform;
+}
+
+/* ── Propuesta A: cinta en movimiento y sticker de oferta ── */
+@keyframes cinta-avanza {
+  to { transform: translateX(-50%); }
+}
+.cinta-movil {
+  animation: cinta-avanza 22s linear infinite;
+}
+@keyframes sticker-flota {
+  0%, 100% { transform: translateY(0) rotate(-6deg); }
+  50% { transform: translateY(-4px) rotate(-3deg); }
+}
+.animar-sticker {
+  animation: sticker-flota 3.2s ease-in-out infinite;
 }

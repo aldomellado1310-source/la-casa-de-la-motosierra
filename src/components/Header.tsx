@@ -1,46 +1,85 @@
 // ============================================================
-// Header en 3 franjas (según mockup aprobado):
-// 1. Barra carbón: despachos, ubicación, horario, WhatsApp.
-// 2. Barra blanca: logo, buscador con botón, cuenta, favoritos,
-//    carrito con total.
-// 3. Nav verde: botón "Todas las categorías" + enlaces.
+// Header.
+// · Móvil: franja informativa, logo + botón "Llamar" rotulado y
+//   buscador grande. La navegación vive en la BarraInferior
+//   (fija abajo, al alcance del pulgar), así el header no se
+//   desborda ni esconde el carrito.
+// · Escritorio (md+): 3 franjas fijas arriba — (1) barra carbón
+//   con despachos/ubicación/horario/teléfono, (2) logo + buscador
+//   + cuenta/favoritos/carrito con rótulo, (3) nav verde.
 // ============================================================
 import { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { WHATSAPP_NUMERO } from '../config/firebase';
+import { Link, useLocation } from 'react-router-dom';
 import { obtenerCategorias } from '../services/productos';
 import { useAuth } from '../stores/useAuth';
 import { useCarrito } from '../stores/useCarrito';
 import { useFavoritos } from '../stores/useFavoritos';
 import { formatoCLP } from '../utils/precio';
+import { ENLACE_LLAMAR, HORARIO_CORTO, TELEFONO_VISIBLE } from '../config/tienda';
 import LogoLCM from './LogoLCM';
 import BuscadorConSugerencias from './BuscadorConSugerencias';
-import { IconoCarrito, IconoCorazon, IconoEngranaje, IconoMenu, IconoPin, IconoReloj, IconoUsuario, IconoWhatsApp } from './Iconos';
+import {
+  IconoCamion, IconoCarrito, IconoCorazon, IconoEngranaje, IconoMenu, IconoPin, IconoReloj,
+  IconoTelefono, IconoUsuario,
+} from './Iconos';
 import type { Categoria } from '../types';
 
+/** Enlaces de la nav verde (escritorio). El 3er valor oculta el enlace bajo lg. */
 const ENLACES_NAV: [string, string, boolean?][] = [
-  ['/', 'Inicio'],
-  ['/tienda', 'Repuestos'],
-  ['/compatibilidad', 'Buscar por compatibilidad', true],
+  ['/compatibilidad', 'Buscar por mi máquina'],
   ['/tienda?ofertas=1', 'Ofertas'],
   ['/marcas', 'Marcas'],
-  ['/cotizaciones/nueva', 'Cotizaciones'],
-  ['/nosotros', 'Nosotros'],
-  ['/preguntas-frecuentes', 'Ayuda'],
+  ['/nosotros', 'Servicio técnico'],
+  ['/cotizaciones/nueva', 'Empresas', true],
+  ['/seguimiento', 'Mi pedido', true],
+  ['/preguntas-frecuentes', 'Ayuda', true],
 ];
+
+/** Acceso con ícono y rótulo debajo (cuenta, favoritos, carrito) */
+function AccesoRotulado({
+  a, icono, rotulo, detalle, contador, etiquetaAria,
+}: {
+  a: string;
+  icono: React.ReactNode;
+  rotulo: string;
+  detalle?: string;
+  contador?: number;
+  etiquetaAria?: string;
+}) {
+  return (
+    <Link
+      to={a}
+      aria-label={etiquetaAria}
+      className="relative flex min-h-[52px] items-center gap-4 rounded-[10px] px-3 py-1.5 text-grafito transition-colors hover:bg-gris-fondo"
+    >
+      <span className="relative">
+        {icono}
+        {contador !== undefined && contador > 0 && (
+          <span className="absolute -right-2.5 -top-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-naranja px-1 text-xs font-bold text-carbon">
+            {contador}
+          </span>
+        )}
+      </span>
+      <span className="hidden text-left leading-tight lg:block">
+        <span className="block text-sm font-bold">{rotulo}</span>
+        {detalle && <span className="block text-xs text-gris-600">{detalle}</span>}
+      </span>
+    </Link>
+  );
+}
 
 export default function Header() {
   const { usuario } = useAuth();
+  const ubicacion = useLocation();
   const totalCarrito = useCarrito((s) => s.total());
   const unidades = useCarrito((s) => s.unidades());
   const totalFavoritos = useFavoritos((s) => s.ids.length);
-  const [menuAbierto, setMenuAbierto] = useState(false);
   const [categoriasAbiertas, setCategoriasAbiertas] = useState(false);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [compacto, setCompacto] = useState(false);
   const refCategorias = useRef<HTMLDivElement>(null);
 
-  // Compacta el header al hacer scroll (logo grande arriba, pequeño al bajar)
+  // Compacta el header de escritorio al hacer scroll
   useEffect(() => {
     let rafId = 0;
     const alDesplazar = () => {
@@ -59,139 +98,134 @@ export default function Header() {
     void obtenerCategorias().then(setCategorias);
   }, []);
 
-  // Cierra el desplegable de categorías al hacer clic fuera
+  // Cierra el desplegable de categorías al hacer clic fuera o con Escape
   useEffect(() => {
     if (!categoriasAbiertas) return;
     const cerrar = (e: MouseEvent) => {
       if (!refCategorias.current?.contains(e.target as Node)) setCategoriasAbiertas(false);
     };
+    const alEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setCategoriasAbiertas(false);
+    };
     document.addEventListener('mousedown', cerrar);
-    return () => document.removeEventListener('mousedown', cerrar);
+    document.addEventListener('keydown', alEscape);
+    return () => {
+      document.removeEventListener('mousedown', cerrar);
+      document.removeEventListener('keydown', alEscape);
+    };
   }, [categoriasAbiertas]);
 
-  // Escape cierra el desplegable de categorías y el menú móvil
-  useEffect(() => {
-    if (!categoriasAbiertas && !menuAbierto) return;
-    const alEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setCategoriasAbiertas(false);
-        setMenuAbierto(false);
-      }
-    };
-    document.addEventListener('keydown', alEscape);
-    return () => document.removeEventListener('keydown', alEscape);
-  }, [categoriasAbiertas, menuAbierto]);
-
   return (
-    <header className="sticky top-0 z-nav shadow-md">
+    <header className="z-nav bg-white md:sticky md:top-0 md:shadow-md">
       {/* 1 · Barra superior carbón */}
       <div className="bg-carbon text-white">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-1.5 text-xs">
-          <p className="font-medium">
-            Despachos a todo Chile <span className="text-white/50">·</span> Especialistas en Aysén
+        <div className="contenedor flex items-center justify-between gap-4 py-2 text-sm">
+          <p className="flex items-center gap-2 font-medium">
+            <IconoCamion className="h-4 w-4 shrink-0 text-naranja" />
+            <span>
+              Despacho a todo Chile <span className="text-white/50">·</span>{' '}
+              <span className="whitespace-nowrap">Retiro gratis en Aysén</span>
+            </span>
           </p>
-          <div className="hidden items-center gap-5 md:flex">
-            <span className="flex items-center gap-1.5"><IconoPin className="h-3.5 w-3.5" /> Puerto Aysén, Patagonia</span>
-            <span className="flex items-center gap-1.5"><IconoReloj className="h-3.5 w-3.5" /> Lun a Vie 9:00–18:30 · Sáb 9:30–13:30</span>
-            <a
-              href={`https://wa.me/${WHATSAPP_NUMERO}`}
-              target="_blank"
-              rel="noreferrer"
-              className="flex items-center gap-1.5 font-semibold hover:text-naranja"
-            >
-              <IconoWhatsApp className="h-3.5 w-3.5" /> +56 9 1234 5678
+          <div className="hidden items-center gap-5 lg:flex">
+            <span className="flex items-center gap-1.5"><IconoPin className="h-4 w-4 text-naranja" /> Puerto Aysén</span>
+            <span className="flex items-center gap-1.5"><IconoReloj className="h-4 w-4 text-naranja" /> {HORARIO_CORTO}</span>
+            <a href={ENLACE_LLAMAR} className="flex items-center gap-1.5 font-bold hover:text-naranja">
+              <IconoTelefono className="h-4 w-4 text-naranja" /> {TELEFONO_VISIBLE}
             </a>
           </div>
         </div>
       </div>
 
-      {/* 2 · Barra principal blanca (se compacta al hacer scroll) */}
+      {/* 2 · Barra principal blanca */}
       <div className="border-b border-borde bg-white">
         <div
-          className={`mx-auto flex max-w-7xl items-center gap-3 px-4 transition-[padding] duration-200 lg:gap-6 ${
-            compacto ? 'py-1.5' : 'py-3'
-          }`}
+          className={`contenedor flex items-center gap-3 transition-[padding] duration-200 lg:gap-6 ${
+            compacto ? 'md:py-1.5' : 'md:py-3'
+          } py-2.5`}
         >
-          <Link to="/" aria-label="Inicio — La Casa de la Motosierra" className="shrink-0">
-            <LogoLCM tamano={compacto ? 'md' : 'lg'} conBajada={!compacto} />
+          <Link to="/" aria-label="Ir al inicio: La Casa de la Motosierra" className="shrink-0">
+            {/* Logo real del cliente; se achica al hacer scroll en escritorio */}
+            <span className="md:hidden"><LogoLCM tamano="lg" /></span>
+            <span className="hidden md:block"><LogoLCM tamano={compacto ? 'lg' : 'xl'} /></span>
           </Link>
 
-          {/* Buscador de texto libre con autocompletado */}
+          {/* Buscador de escritorio (en la portada aparece al bajar: arriba ya está el del hero) */}
           <div className="hidden flex-1 md:block">
-            <BuscadorConSugerencias />
+            {(ubicacion.pathname !== '/' || compacto) && <BuscadorConSugerencias />}
           </div>
 
-          {/* Acciones */}
-          <nav className="ml-auto flex items-center gap-1 md:ml-0 lg:gap-2" aria-label="Cuenta y carrito">
-            <Link
-              to={usuario ? '/mi-cuenta' : '/ingresar'}
-              className="flex min-h-[44px] items-center gap-2 rounded-lg px-2.5 py-1.5 hover:bg-gris-fondo"
-            >
-              <IconoUsuario className="h-6 w-6 text-grafito" />
-              <span className="hidden text-left leading-tight xl:block">
-                <span className="block text-sm font-semibold">Mi cuenta</span>
-                <span className="block text-xs text-gris-600">{usuario ? `Hola, ${usuario.nombre.split(' ')[0]}` : 'Ingresar'}</span>
-              </span>
-            </Link>
-            <Link to="/favoritos" className="relative flex min-h-[44px] items-center gap-2 rounded-lg px-2.5 py-1.5 hover:bg-gris-fondo" aria-label={`Favoritos (${totalFavoritos})`}>
-              <IconoCorazon className="h-6 w-6 text-grafito" />
-              <span className="hidden text-sm font-semibold xl:block">Favoritos</span>
-              {totalFavoritos > 0 && (
-                <span className="absolute -right-0.5 top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-naranja px-1 text-[10px] font-bold text-white xl:right-auto xl:left-6">
-                  {totalFavoritos}
-                </span>
-              )}
-            </Link>
-            <Link to="/carrito" className="relative flex min-h-[44px] items-center gap-2 rounded-lg px-2.5 py-1.5 hover:bg-gris-fondo" aria-label={`Carrito, ${unidades} productos, total ${formatoCLP(totalCarrito)}`}>
-              <IconoCarrito className="h-6 w-6 text-grafito" />
-              <span className="hidden text-left leading-tight xl:block">
-                <span className="block text-sm font-semibold">Carrito</span>
-                <span className="block text-xs text-gris-600">{formatoCLP(totalCarrito)}</span>
-              </span>
-              {unidades > 0 && (
-                <span className="absolute -right-0.5 top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-naranja px-1 text-[10px] font-bold text-white xl:right-auto xl:left-6">
-                  {unidades}
-                </span>
-              )}
-            </Link>
-            <button
-              onClick={() => setMenuAbierto(!menuAbierto)}
-              className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg hover:bg-gris-fondo md:hidden"
-              aria-label={menuAbierto ? 'Cerrar menú' : 'Abrir menú'}
-              aria-expanded={menuAbierto}
-            >
-              <IconoMenu abierto={menuAbierto} className="h-6 w-6" />
-            </button>
+          {/* Móvil: llamar con un toque (rotulado, no solo ícono) */}
+          <a
+            href={ENLACE_LLAMAR}
+            className="ml-auto flex min-h-[48px] shrink-0 items-center gap-2 rounded-full bg-carbon px-4 text-base font-bold text-white md:hidden"
+          >
+            <IconoTelefono className="h-5 w-5 text-naranja" /> Llamar
+          </a>
+
+          {/* Escritorio: cuenta, favoritos, carrito */}
+          <nav className="hidden items-center gap-1 md:flex" aria-label="Cuenta y carrito">
+            <AccesoRotulado
+              a={usuario ? '/mi-cuenta' : '/ingresar'}
+              icono={<IconoUsuario className="h-7 w-7" />}
+              rotulo="Mi cuenta"
+              detalle={usuario ? `Hola, ${usuario.nombre.split(' ')[0]}` : 'Ingresar'}
+              etiquetaAria={usuario ? 'Mi cuenta' : 'Ingresar a mi cuenta'}
+            />
+            <AccesoRotulado
+              a="/favoritos"
+              icono={<IconoCorazon className="h-7 w-7" />}
+              rotulo="Favoritos"
+              contador={totalFavoritos}
+              etiquetaAria={`Favoritos (${totalFavoritos})`}
+            />
+            <AccesoRotulado
+              a="/carrito"
+              icono={<IconoCarrito className="h-7 w-7" />}
+              rotulo="Carrito"
+              detalle={formatoCLP(totalCarrito)}
+              contador={unidades}
+              etiquetaAria={`Carrito: ${unidades} productos, total ${formatoCLP(totalCarrito)}`}
+            />
           </nav>
         </div>
 
-        {/* Buscador móvil con autocompletado */}
-        <div className="px-4 pb-3 md:hidden">
-          <BuscadorConSugerencias />
-        </div>
+        {/* Buscador móvil (en la portada lo trae el hero naranja) */}
+        {ubicacion.pathname !== '/' && (
+          <div className="contenedor pb-3 md:hidden">
+            <BuscadorConSugerencias />
+          </div>
+        )}
       </div>
 
-      {/* 3 · Nav verde */}
-      <nav className={`bg-verde text-white ${menuAbierto ? 'block' : 'hidden'} md:block`} aria-label="Navegación principal">
-        <div className="mx-auto flex max-w-7xl flex-col px-4 md:flex-row md:items-stretch md:gap-1">
-          {/* Todas las categorías */}
-          <div className="relative py-2 md:py-1.5" ref={refCategorias}>
+      {/* 3 · Nav verde (solo escritorio; en móvil está la barra inferior) */}
+      <nav className="hidden bg-carbon text-white md:block" aria-label="Navegación principal">
+        <div className="contenedor flex items-center gap-1 py-1.5">
+          {/* Categorías */}
+          <div className="relative" ref={refCategorias}>
             <button
               onClick={() => setCategoriasAbiertas(!categoriasAbiertas)}
-              className="flex min-h-[40px] w-full items-center gap-2 rounded-lg bg-naranja px-4 text-sm font-bold transition-colors hover:bg-naranja-oscuro md:w-auto"
+              className="flex min-h-[44px] items-center gap-2 rounded-full bg-naranja px-5 text-base font-bold text-carbon transition-colors hover:bg-naranja-hover"
               aria-expanded={categoriasAbiertas}
               aria-haspopup="true"
             >
-              <IconoMenu className="h-4 w-4" /> Todas las categorías
+              <IconoMenu className="h-5 w-5" /> Categorías
             </button>
             {categoriasAbiertas && (
-              <div className="animar-entrada md:absolute md:left-0 md:top-full md:w-72 md:rounded-b-xl md:border md:border-borde md:bg-white md:py-2 md:shadow-tarjeta">
+              <div className="animar-entrada absolute left-0 top-full z-flotante mt-2 w-80 overflow-hidden rounded-xl border border-borde bg-white py-2 shadow-tarjeta">
+                <Link
+                  to="/tienda"
+                  onClick={() => setCategoriasAbiertas(false)}
+                  className="block px-5 py-3 text-base font-bold text-verde hover:bg-gris-fondo"
+                >
+                  Ver todos los repuestos
+                </Link>
                 {categorias.map((c) => (
                   <Link
                     key={c.id}
                     to={`/tienda?categoria=${c.id}`}
-                    onClick={() => { setCategoriasAbiertas(false); setMenuAbierto(false); }}
-                    className="block px-4 py-2.5 text-sm font-medium text-white hover:bg-white/10 md:text-grafito md:hover:bg-gris-fondo"
+                    onClick={() => setCategoriasAbiertas(false)}
+                    className="block border-t border-borde px-5 py-3 text-base font-medium text-grafito hover:bg-gris-fondo"
                   >
                     {c.nombre}
                   </Link>
@@ -200,35 +234,32 @@ export default function Header() {
             )}
           </div>
 
-          {/* Enlaces */}
-          <div className="flex flex-1 flex-col pb-2 md:flex-row md:items-center md:pb-0">
-            {ENLACES_NAV.map(([ruta, texto, nuevo]) => (
+          {ENLACES_NAV.map(([ruta, texto, soloAncho]) => {
+            // Activo = misma ruta y mismo query (Ofertas ≠ resto de la tienda)
+            const activo = ruta === ubicacion.pathname + ubicacion.search;
+            return (
               <Link
                 key={texto}
                 to={ruta}
-                onClick={() => setMenuAbierto(false)}
-                className="flex min-h-[44px] items-center gap-2 rounded px-3 text-sm font-medium hover:bg-white/10"
+                aria-current={activo ? 'page' : undefined}
+                className={`${soloAncho ? 'hidden lg:flex' : 'flex'} min-h-[44px] items-center whitespace-nowrap rounded-full px-4 text-base font-semibold transition-colors ${
+                  activo ? 'bg-white text-carbon' : 'hover:bg-white/15'
+                }`}
               >
                 {texto}
-                {nuevo && (
-                  <span className="rounded-full bg-white px-1.5 py-0.5 text-[10px] font-bold uppercase text-verde">
-                    Nuevo
-                  </span>
-                )}
               </Link>
-            ))}
+            );
+          })}
 
-            {/* Acceso al panel — solo cuentas con rol admin */}
-            {usuario?.rol === 'admin' && (
-              <Link
-                to="/admin"
-                onClick={() => setMenuAbierto(false)}
-                className="mt-1 flex min-h-[40px] items-center gap-2 rounded-lg border border-white/40 px-4 text-sm font-bold transition-colors hover:bg-white hover:text-verde md:ml-auto md:mt-0"
-              >
-                <IconoEngranaje className="h-4 w-4" /> Panel admin
-              </Link>
-            )}
-          </div>
+          {/* Acceso al panel — solo cuentas con rol admin */}
+          {usuario?.rol === 'admin' && (
+            <Link
+              to="/admin"
+              className="ml-auto flex min-h-[44px] items-center gap-2 rounded-[10px] border-2 border-white/40 px-4 text-sm font-bold transition-colors hover:bg-white hover:text-verde"
+            >
+              <IconoEngranaje className="h-4 w-4" /> Panel admin
+            </Link>
+          )}
         </div>
       </nav>
     </header>

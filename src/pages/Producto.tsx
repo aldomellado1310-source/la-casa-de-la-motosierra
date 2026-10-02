@@ -12,8 +12,11 @@ import { obtenerProducto, obtenerProductos, registrarAvisoStock } from '../servi
 import TarjetaProducto from '../components/TarjetaProducto';
 import { useCarrito } from '../stores/useCarrito';
 import { useFavoritos } from '../stores/useFavoritos';
-import { IconoCorazon } from '../components/Iconos';
-import { WHATSAPP_NUMERO } from '../config/firebase';
+import {
+  IconoCamion, IconoCarrito, IconoCheck, IconoCorazon, IconoEscudo, IconoFlecha, IconoPin, IconoWhatsApp,
+} from '../components/Iconos';
+import { enlaceWhatsApp } from '../config/tienda';
+import { useAviso } from '../stores/useAviso';
 import { enOferta, estadoStock, formatoCLP, porcentajeOferta, precioPorCantidad, precioVigente } from '../utils/precio';
 import { jsonLdProducto, useSeo } from '../utils/seo';
 import type { Producto as TipoProducto } from '../types';
@@ -27,11 +30,14 @@ function BotonFavorito({ productoId, nombre }: { productoId: string; nombre: str
       onClick={() => alternar(productoId)}
       aria-label={esFavorito ? `Quitar ${nombre} de favoritos` : `Agregar ${nombre} a favoritos`}
       aria-pressed={esFavorito}
-      className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full border transition-colors duration-150 ${
-        esFavorito ? 'border-oferta bg-white text-oferta' : 'border-borde bg-white text-gris-600 hover:text-oferta'
+      className={`flex min-h-[44px] shrink-0 items-center gap-2 rounded-full border-2 px-4 text-sm font-bold transition-colors duration-150 ${
+        esFavorito ? 'border-oferta bg-white text-oferta' : 'border-borde bg-white text-grafito hover:border-oferta hover:text-oferta'
       }`}
     >
-      <IconoCorazon className="h-5 w-5" relleno={esFavorito} />
+      <span key={String(esFavorito)} className={esFavorito ? 'animar-favorito' : ''}>
+        <IconoCorazon className="h-5 w-5" relleno={esFavorito} />
+      </span>
+      {esFavorito ? 'Guardado' : 'Guardar'}
     </button>
   );
 }
@@ -39,6 +45,7 @@ function BotonFavorito({ productoId, nombre }: { productoId: string; nombre: str
 export default function Producto() {
   const { id } = useParams<{ id: string }>();
   const agregar = useCarrito((s) => s.agregar);
+  const mostrarAviso = useAviso((s) => s.mostrar);
   const [producto, setProducto] = useState<TipoProducto | null>(null);
   const [relacionados, setRelacionados] = useState<TipoProducto[]>([]);
   const [cargando, setCargando] = useState(true);
@@ -103,19 +110,30 @@ export default function Producto() {
 
   if (error) {
     return (
-      <div className="mx-auto max-w-7xl px-4 py-16">
+      <div className="contenedor py-16">
         <EstadoError onReintentar={() => setReintento((n) => n + 1)} />
       </div>
     );
   }
   if (cargando) {
-    return <div className="mx-auto max-w-7xl px-4 py-16 text-center text-verde">Cargando producto…</div>;
+    return (
+      <div className="contenedor grid gap-8 py-8 lg:grid-cols-2" role="status" aria-label="Cargando producto">
+        <div className="aspect-square animate-pulse rounded-xl bg-gris-fondo" />
+        <div className="space-y-4">
+          <div className="h-10 w-3/4 animate-pulse rounded bg-gris-fondo" />
+          <div className="h-6 w-1/3 animate-pulse rounded bg-gris-fondo" />
+          <div className="h-12 w-1/2 animate-pulse rounded bg-gris-fondo" />
+          <div className="h-14 w-full animate-pulse rounded bg-gris-fondo" />
+        </div>
+      </div>
+    );
   }
   if (!producto) {
     return (
-      <div className="mx-auto max-w-7xl px-4 py-16 text-center">
-        <p className="font-semibold">Producto no encontrado.</p>
-        <Link to="/tienda" className="btn-primario mt-4">Volver a la tienda</Link>
+      <div className="contenedor py-16 text-center">
+        <p className="text-xl font-bold">No encontramos este producto.</p>
+        <p className="mt-2 text-base text-gris-600">Puede que ya no esté en el catálogo.</p>
+        <Link to="/tienda" className="btn-primario mt-6">Ver todos los repuestos</Link>
       </div>
     );
   }
@@ -131,6 +149,7 @@ export default function Producto() {
 
   const alAgregar = () => {
     agregar(producto, cantidad);
+    mostrarAviso(cantidad === 1 ? 'Agregado al carrito' : `${cantidad} unidades agregadas al carrito`);
     setAgregado(true);
     setTimeout(() => setAgregado(false), 2500);
   };
@@ -142,73 +161,80 @@ export default function Producto() {
     setAvisoOk(true);
   };
 
+  const mensajeConsulta = `Hola, quiero consultar por el repuesto ${producto.nombre} (código ${producto.sku}). ¿Le sirve a mi máquina?`;
+
   return (
-    <div className="mx-auto max-w-7xl px-4 py-6">
-      {/* Miga de pan */}
-      <nav className="mb-4 text-xs text-gris-600">
-        <Link to="/" className="hover:text-verde">Inicio</Link> ·{' '}
-        <Link to="/tienda" className="hover:text-verde">Tienda</Link> ·{' '}
-        <Link to={`/tienda?categoria=${producto.categoria}`} className="hover:text-verde">
+    <div className="contenedor py-5 sm:py-8">
+      {/* Volver + miga de pan */}
+      <nav aria-label="Ubicación" className="mb-5 flex flex-wrap items-center gap-x-2 gap-y-1 text-base text-gris-600">
+        <Link to="/tienda" className="flex min-h-[44px] items-center gap-1.5 font-semibold text-verde hover:underline">
+          <IconoFlecha direccion="izquierda" className="h-5 w-5" /> Repuestos
+        </Link>
+        <span aria-hidden="true">/</span>
+        <Link to={`/tienda?categoria=${producto.categoria}`} className="hover:text-verde hover:underline">
           {producto.subcategoria}
         </Link>
       </nav>
 
-      <div className="grid gap-8 lg:grid-cols-2">
-        <GaleriaFotos fotos={producto.fotos} alt={producto.nombre} />
+      <div className="grid gap-8 lg:grid-cols-2 lg:gap-12">
+        <GaleriaFotos fotos={producto.fotos} alt={producto.nombre} categoria={producto.categoria} />
 
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-gris-600">SKU {producto.sku}</p>
-          <div className="mt-1 flex items-start justify-between gap-3">
-            <h1 className="text-2xl font-bold leading-tight sm:text-3xl">{producto.nombre}</h1>
+          <h1 className="text-[1.75rem] font-bold leading-tight sm:text-4xl">{producto.nombre}</h1>
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+            <p className="text-base text-gris-600">Código: <span className="font-semibold text-grafito">{producto.sku}</span></p>
             <BotonFavorito productoId={producto.id} nombre={producto.nombre} />
           </div>
-          <div className="mt-3"><BadgeStock producto={producto} /></div>
 
           {/* Precio dinámico según cantidad y oferta */}
-          <div className="mt-4">
-            <p className="flex items-baseline gap-3">
-              <span className="text-3xl font-bold text-grafito">{formatoCLP(precioActual)}</span>
+          <div className="mt-5 border-t border-borde pt-5">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+              <span className="font-display text-5xl font-extrabold leading-none text-carbon sm:text-6xl">{formatoCLP(precioActual)}</span>
               {precioActual < producto.precio && (
-                <s className="text-lg text-gris-600">{formatoCLP(producto.precio)}</s>
+                <s className="text-xl text-gris-600"><span className="sr-only">Antes </span>{formatoCLP(producto.precio)}</s>
               )}
               {enOferta(producto) && (
-                <span className="rounded-full bg-oferta px-2.5 py-1 text-xs font-bold text-white">
+                <span className="rounded-full bg-oferta px-3 py-1 text-sm font-bold text-white">
                   Oferta −{porcentajeOferta(producto)}%
                 </span>
               )}
+            </div>
+            <p className="mt-1 text-base text-gris-600">
+              {cantidad > 1 ? 'Precio por unidad · ' : ''}IVA incluido
+              {!enOferta(producto) && precioActual < producto.precio && (
+                <span className="font-semibold text-verde"> · Precio por volumen aplicado</span>
+              )}
             </p>
-            {!enOferta(producto) && precioActual < producto.precio && (
-              <p className="text-sm font-medium text-verde">Precio por volumen aplicado</p>
-            )}
-            <p className="text-xs text-gris-600">IVA incluido</p>
+            <div className="mt-3"><BadgeStock producto={producto} /></div>
           </div>
 
           {/* Compra */}
           {!sinCompra ? (
-            <div className="mt-5 flex flex-wrap items-end gap-3">
-              <div>
-                <label htmlFor="cantidad" className="etiqueta">Cantidad</label>
-                <div className="flex items-center overflow-hidden rounded-lg border border-borde bg-white">
+            <div className="mt-6 space-y-3">
+              <div className="flex items-center gap-4">
+                <label htmlFor="cantidad" className="text-lg font-semibold">Cantidad</label>
+                <div className="stepper h-[52px]">
                   <button
                     onClick={() => setCantidad(Math.max(1, cantidad - 1))}
-                    className="px-3 py-2.5 font-bold text-verde hover:bg-gris-fondo"
-                    aria-label="Menos"
+                    disabled={cantidad <= 1}
+                    aria-label="Quitar una unidad"
                   >
                     −
                   </button>
                   <input
                     id="cantidad"
                     type="number"
+                    inputMode="numeric"
                     min={1}
                     max={maxCantidad}
                     value={cantidad}
                     onChange={(e) => setCantidad(Math.min(maxCantidad, Math.max(1, parseInt(e.target.value, 10) || 1)))}
-                    className="w-16 border-0 py-2.5 text-center text-sm outline-none"
+                    className="w-16 border-x-2 border-carbon text-center text-xl font-bold outline-none [appearance:textfield] focus:bg-naranja-suave [&::-webkit-inner-spin-button]:appearance-none"
                   />
                   <button
                     onClick={() => setCantidad(Math.min(maxCantidad, cantidad + 1))}
-                    className="px-3 py-2.5 font-bold text-verde hover:bg-gris-fondo"
-                    aria-label="Más"
+                    disabled={cantidad >= maxCantidad}
+                    aria-label="Agregar una unidad"
                   >
                     +
                   </button>
@@ -216,90 +242,121 @@ export default function Producto() {
               </div>
               <button
                 onClick={alAgregar}
-                className={`${agregado ? 'btn-verde' : 'btn-primario'} flex-1 py-3 sm:flex-none sm:px-8`}
+                className={`${agregado ? 'btn-verde' : 'btn-primario'} btn-grande w-full`}
                 aria-live="polite"
               >
-                {agregado ? '✓ Agregado al carrito' : estado === 'bajo_pedido' ? 'Comprar bajo pedido' : 'Agregar al carrito'}
+                {agregado ? (
+                  '✓ Agregado al carrito'
+                ) : (
+                  <>
+                    <IconoCarrito className="h-6 w-6" />
+                    {estado === 'bajo_pedido' ? 'Pedir bajo encargo' : 'Agregar al carrito'}
+                    {cantidad > 1 && ` · ${formatoCLP(precioActual * cantidad)}`}
+                  </>
+                )}
               </button>
+              {agregado && (
+                <Link to="/carrito" className="btn-secundario animar-entrada w-full">
+                  Ir al carrito y pagar <IconoFlecha className="h-5 w-5" />
+                </Link>
+              )}
             </div>
           ) : (
             /* Avísame cuando llegue */
-            <div className="mt-5 rounded-xl border border-naranja/40 bg-naranja/5 p-4">
-              <h3 className="font-bold text-naranja-oscuro">Producto agotado</h3>
+            <div className="mt-6 rounded-xl border-2 border-borde bg-gris-fondo p-5">
+              <h2 className="text-xl font-bold">Este producto está agotado</h2>
               {avisoOk ? (
-                <p className="mt-2 text-sm text-verde">✓ Listo. Te avisaremos a {emailAviso} cuando vuelva el stock.</p>
+                <p className="mt-2 flex items-start gap-2 text-base font-semibold text-verde">
+                  <IconoCheck className="h-6 w-6 shrink-0" /> Listo. Te avisaremos a {emailAviso} cuando vuelva.
+                </p>
               ) : (
-                <form onSubmit={solicitarAviso} className="mt-2 flex flex-col gap-2 sm:flex-row">
+                <form onSubmit={solicitarAviso} className="mt-3 space-y-3">
+                  <label htmlFor="correo-aviso" className="etiqueta">Déjanos tu correo y te avisamos cuando llegue</label>
                   <input
+                    id="correo-aviso"
                     type="email"
                     required
+                    autoComplete="email"
                     value={emailAviso}
                     onChange={(e) => setEmailAviso(e.target.value)}
                     placeholder="tu@correo.cl"
-                    aria-label="Correo para avisarte cuando vuelva el stock"
-                    className="campo flex-1"
+                    className="campo"
                   />
-                  <button type="submit" className="btn-primario">Avísame cuando llegue</button>
+                  <button type="submit" className="btn-primario w-full">Avísame cuando llegue</button>
                 </form>
               )}
             </div>
           )}
 
+          {/* Duda de compatibilidad: salida humana */}
+          <div className="mt-4 rounded-xl bg-verde-badge p-4">
+            <p className="text-base font-semibold text-verde-oscuro">¿No estás seguro si le sirve a tu máquina?</p>
+            <a href={enlaceWhatsApp(mensajeConsulta)} target="_blank" rel="noreferrer" className="btn-whatsapp mt-3 w-full">
+              <IconoWhatsApp className="h-5 w-5" /> Preguntar por WhatsApp
+            </a>
+          </div>
+
+          {/* Entrega y garantías */}
+          <ul className="mt-6 space-y-3 text-base">
+            <li className="flex items-start gap-3">
+              <IconoPin className="mt-0.5 h-6 w-6 shrink-0 text-verde" />
+              <span><strong>Retiro gratis</strong> en nuestra tienda de Puerto Aysén</span>
+            </li>
+            <li className="flex items-start gap-3">
+              <IconoCamion className="mt-0.5 h-6 w-6 shrink-0 text-verde" />
+              <span><strong>Envío a todo Chile.</strong> Ves el costo antes de pagar</span>
+            </li>
+            <li className="flex items-start gap-3">
+              <IconoEscudo className="mt-0.5 h-6 w-6 shrink-0 text-verde" />
+              <span><strong>Pago seguro</strong> con Webpay, Mercado Pago o transferencia</span>
+            </li>
+          </ul>
+
           {/* Tabla de precios por volumen */}
           {producto.preciosPorVolumen.length > 1 && (
-            <div className="mt-6">
-              <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-verde">
-                Precios por volumen — mayorista
-              </h2>
+            <div className="mt-8">
+              <h2 className="mb-1 text-xl font-bold">Más barato por cantidad</h2>
+              <p className="mb-3 text-base text-gris-600">Mientras más unidades lleves, menor es el precio de cada una.</p>
               <TablaVolumen tramos={producto.preciosPorVolumen} cantidadActual={cantidad} />
             </div>
           )}
 
           {/* Compatibilidad */}
           {producto.compatibilidades.length > 0 && (
-            <div className="mt-6">
-              <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-verde">Compatible con</h2>
-              <div className="space-y-2">
+            <div className="mt-8">
+              <h2 className="mb-3 text-xl font-bold">Le sirve a estas máquinas</h2>
+              <ul className="divide-y divide-borde rounded-xl border border-borde">
                 {producto.compatibilidades.map((c) => (
-                  <div key={c.marca} className="flex flex-wrap items-center gap-1.5">
+                  <li key={c.marca} className="flex flex-wrap items-center gap-2 p-3">
                     <Link
                       to={`/tienda?marca=${encodeURIComponent(c.marca)}`}
-                      className="rounded-full bg-verde/10 px-3 py-1 text-xs font-semibold text-verde hover:bg-verde/20"
+                      className="enlace mr-1 text-lg"
                     >
                       {c.marca}
                     </Link>
                     {c.modelos.length > 0 ? (
                       c.modelos.map((m) => (
-                        <span key={m} className="rounded-full border border-borde px-3 py-1 text-xs text-grafito/80">
+                        <span key={m} className="rounded-full border border-borde bg-gris-fondo px-3 py-1 text-base text-grafito">
                           {m}
                         </span>
                       ))
                     ) : (
-                      <span className="text-xs text-gris-600">Todos los modelos</span>
+                      <span className="text-base text-gris-600">Todos los modelos</span>
                     )}
-                  </div>
+                  </li>
                 ))}
-              </div>
+              </ul>
             </div>
           )}
 
           {/* Descripción */}
-          <div className="mt-6">
-            <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-verde">Descripción</h2>
+          <div className="mt-8">
+            <h2 className="mb-2 text-xl font-bold">Descripción</h2>
             {producto.descripcion.trim() ? (
-              <p className="text-sm leading-relaxed text-grafito/90">{producto.descripcion}</p>
+              <p className="max-w-prose text-base leading-relaxed text-grafito">{producto.descripcion}</p>
             ) : (
-              <p className="text-sm leading-relaxed text-gris-600">
-                Sin descripción detallada todavía.{' '}
-                <a
-                  href={`https://wa.me/${WHATSAPP_NUMERO}?text=${encodeURIComponent(`Hola, quiero consultar por el repuesto ${producto.sku} (${producto.nombre})`)}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="font-semibold text-verde hover:underline"
-                >
-                  Escríbenos por WhatsApp
-                </a>{' '}
-                para confirmar compatibilidad y disponibilidad.
+              <p className="text-base leading-relaxed text-gris-600">
+                Aún no tenemos una descripción detallada. Escríbenos y te confirmamos si le sirve a tu máquina.
               </p>
             )}
           </div>
@@ -308,12 +365,12 @@ export default function Producto() {
 
       {/* Productos relacionados — cross-sell por compatibilidad */}
       {relacionados.length > 0 && (
-        <section className="mt-12 border-t border-borde pt-8">
-          <h2 className="titulo-seccion mb-2">Completa tu mantención</h2>
-          <p className="mb-5 text-sm text-gris-600">
-            Repuestos compatibles con las mismas máquinas que {producto.nombre.toLowerCase().startsWith('kit') ? 'este kit' : 'este producto'}.
+        <section className="mt-14 border-t border-borde pt-10">
+          <h2 className="titulo-seccion">Completa tu mantención</h2>
+          <p className="bajada-seccion">
+            Repuestos que sirven a las mismas máquinas que {producto.nombre.toLowerCase().startsWith('kit') ? 'este kit' : 'este producto'}.
           </p>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+          <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
             {relacionados.map((r) => (
               <TarjetaProducto key={r.id} producto={r} />
             ))}

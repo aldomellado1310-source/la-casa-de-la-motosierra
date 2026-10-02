@@ -1,11 +1,13 @@
-﻿// Carrito: edición de cantidades con recálculo de precio por
+// Carrito: edición de cantidades con recálculo de precio por
 // volumen, y acceso a checkout o a solicitar cotización.
+// En móvil, el total y "Continuar" quedan fijos sobre la barra
+// inferior: pagar nunca queda escondido al final de la lista.
 import { Link, useNavigate } from 'react-router-dom';
 import { useCarrito } from '../stores/useCarrito';
-import { useAuth } from '../stores/useAuth';
 import { formatoCLP } from '../utils/precio';
 import { useSeo } from '../utils/seo';
-import { IconoCarrito, IconoDocumento } from '../components/Iconos';
+import FotoProducto from '../components/FotoProducto';
+import { IconoBasura, IconoCarrito, IconoDocumento, IconoFlecha, IconoPin } from '../components/Iconos';
 
 export default function Carrito() {
   useSeo({
@@ -13,88 +15,125 @@ export default function Carrito() {
     descripcion: 'Revisa tu carrito: precios por volumen aplicados automáticamente y costo de envío visible antes de pagar.',
   });
   const navigate = useNavigate();
-  const { usuario } = useAuth();
-  const { items, cambiarCantidad, quitar, total } = useCarrito();
+  const { items, cambiarCantidad, quitar, total, unidades } = useCarrito();
 
   if (items.length === 0) {
     return (
-      <div className="mx-auto max-w-3xl px-4 py-16 text-center">
-        <IconoCarrito className="mx-auto h-14 w-14 text-gris-600" />
-        <h1 className="mt-4 text-xl font-extrabold">Tu carrito está vacío</h1>
-        <p className="mt-2 text-sm text-gris-600">Encuentra el repuesto justo para tu máquina.</p>
-        <Link to="/tienda" className="btn-primario mt-6">Ir a la tienda</Link>
+      <div className="contenedor max-w-xl py-16 text-center">
+        <span className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-gris-fondo">
+          <IconoCarrito className="h-10 w-10 text-gris-600" />
+        </span>
+        <h1 className="mt-5 text-2xl font-bold">Tu carrito está vacío</h1>
+        <p className="mt-2 text-base text-gris-600">
+          Busca el repuesto para tu máquina y toca <strong>“Agregar”</strong>. Aparecerá aquí.
+        </p>
+        <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
+          <Link to="/compatibilidad" className="btn-primario">Buscar por mi máquina</Link>
+          <Link to="/tienda" className="btn-secundario">Ver todos los repuestos</Link>
+        </div>
       </div>
     );
   }
 
-  return (
-    <div className="mx-auto max-w-5xl px-4 py-6">
-      <h1 className="mb-6 titulo-seccion">Carrito de compras</h1>
+  const n = unidades();
 
-      <div className="flex flex-col gap-6 lg:flex-row">
+  return (
+    <div className="contenedor max-w-5xl py-6 pb-32 sm:py-8 md:pb-8">
+      <h1 className="titulo-seccion">Tu carrito</h1>
+      <p className="mt-2 text-base text-gris-600">
+        {n} producto{n === 1 ? '' : 's'} · Precios con IVA incluido
+      </p>
+
+      <div className="mt-6 flex flex-col gap-6 lg:flex-row lg:items-start">
         {/* Ítems */}
-        <div className="flex-1 space-y-3">
+        <ul className="flex-1 divide-y-2 divide-gris-fondo rounded-[22px] border-2 border-carbon bg-white">
           {items.map((it) => (
-            <div key={it.productoId} className="tarjeta flex gap-3">
-              <img src={it.foto} alt="" loading="lazy" width={80} height={80} className="h-20 w-20 shrink-0 rounded-lg object-cover" />
+            <li key={it.productoId} className="flex gap-3 p-4 sm:gap-4">
+              <Link to={`/producto/${it.productoId}`} tabIndex={-1} aria-hidden="true" className="shrink-0">
+                <FotoProducto src={it.foto} alt="" tamano="chico" width={96} height={96} className="h-20 w-20 rounded-lg border border-borde object-cover sm:h-24 sm:w-24" />
+              </Link>
               <div className="min-w-0 flex-1">
-                <Link to={`/producto/${it.productoId}`} className="line-clamp-2 text-sm font-semibold hover:text-verde">
-                  {it.nombre}
-                </Link>
-                <p className="text-xs text-gris-600">SKU {it.sku}</p>
-                <div className="mt-2 flex flex-wrap items-center gap-3">
-                  <div className="flex items-center overflow-hidden rounded-lg border border-borde">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <Link to={`/producto/${it.productoId}`} className="line-clamp-2 text-base font-semibold leading-snug hover:text-verde hover:underline">
+                      {it.nombre}
+                    </Link>
+                    <p className="text-sm text-gris-600">Código: {it.sku}</p>
+                  </div>
+                  <p className="shrink-0 text-right text-lg font-bold">{formatoCLP(it.precioUnitario * it.cantidad)}</p>
+                </div>
+
+                <p className="mt-1 text-sm text-gris-600">
+                  {formatoCLP(it.precioUnitario)} c/u
+                  {it.precioUnitario < it.precioBase && (
+                    <span className="font-semibold text-verde"> · Precio por volumen (antes {formatoCLP(it.precioBase)})</span>
+                  )}
+                </p>
+
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+                  <div className="stepper h-12" role="group" aria-label={`Cantidad de ${it.nombre}`}>
                     <button
                       onClick={() => cambiarCantidad(it.productoId, it.cantidad - 1)}
-                      className="px-2.5 py-1.5 font-bold text-verde hover:bg-gris-fondo"
-                      aria-label="Menos"
+                      disabled={it.cantidad <= 1}
+                      aria-label="Quitar una unidad"
                     >−</button>
-                    <span className="w-10 text-center text-sm">{it.cantidad}</span>
+                    <span className="flex w-12 items-center justify-center border-x-2 border-carbon text-lg font-bold" aria-live="polite">
+                      {it.cantidad}
+                    </span>
                     <button
                       onClick={() => cambiarCantidad(it.productoId, it.cantidad + 1)}
-                      className="px-2.5 py-1.5 font-bold text-verde hover:bg-gris-fondo"
-                      aria-label="Más"
+                      aria-label="Agregar una unidad"
                     >+</button>
                   </div>
-                  <button onClick={() => quitar(it.productoId)} className="text-xs text-red-600 hover:underline">
-                    Quitar
+                  <button
+                    onClick={() => quitar(it.productoId)}
+                    className="flex min-h-[44px] items-center gap-1.5 rounded-[10px] px-2 text-base font-semibold text-oferta hover:bg-oferta/5"
+                  >
+                    <IconoBasura className="h-5 w-5" /> Quitar
+                    <span className="sr-only"> {it.nombre} del carrito</span>
                   </button>
                 </div>
-                {it.precioUnitario < it.precioBase && (
-                  <p className="mt-1 text-[11px] font-semibold text-verde">
-                    Precio por volumen aplicado: {formatoCLP(it.precioUnitario)} c/u (antes {formatoCLP(it.precioBase)})
-                  </p>
-                )}
               </div>
-              <div className="text-right">
-                <p className="font-extrabold text-naranja-oscuro">{formatoCLP(it.precioUnitario * it.cantidad)}</p>
-                <p className="text-[11px] text-gris-600">{formatoCLP(it.precioUnitario)} c/u</p>
-              </div>
-            </div>
+            </li>
           ))}
-        </div>
+        </ul>
 
         {/* Resumen */}
-        <aside className="lg:w-80 lg:shrink-0">
-          <div className="tarjeta sticky top-28">
-            <h2 className="mb-3 font-bold">Resumen</h2>
-            <div className="flex justify-between border-b border-borde pb-3 text-sm">
-              <span>Subtotal (IVA incluido)</span>
-              <span className="font-bold">{formatoCLP(total())}</span>
+        <aside className="lg:sticky lg:top-44 lg:w-80 lg:shrink-0">
+          <div className="tarjeta">
+            <h2 className="text-xl font-bold">Resumen</h2>
+            <div className="mt-3 flex items-baseline justify-between gap-3 border-b border-borde pb-3">
+              <span className="text-base">Total productos</span>
+              <span className="text-2xl font-bold">{formatoCLP(total())}</span>
             </div>
-            <p className="mt-2 text-xs text-gris-600">El costo de envío se calcula y muestra en el siguiente paso, antes de pagar.</p>
-            <button onClick={() => navigate('/checkout')} className="btn-primario mt-4 w-full py-3">
-              Ir a pagar
+            <p className="mt-3 flex items-start gap-2 text-base text-gris-600">
+              <IconoPin className="mt-0.5 h-5 w-5 shrink-0 text-verde" />
+              En el siguiente paso eliges retiro gratis en tienda o envío, y ves su costo antes de pagar.
+            </p>
+            <button onClick={() => navigate('/checkout')} className="btn-primario btn-grande mt-5 hidden w-full md:flex">
+              Continuar con la compra <IconoFlecha className="h-5 w-5" />
             </button>
-            <Link
-              to="/cotizaciones/nueva"
-              className="btn-secundario mt-2 w-full"
-              title={usuario?.tipo === 'empresa' ? '' : 'Disponible para todos, ideal para empresas'}
-            >
-              <IconoDocumento className="h-4 w-4" /> Solicitar cotización formal
+            <Link to="/tienda" className="btn-secundario mt-3 w-full">
+              Seguir comprando
+            </Link>
+            <Link to="/cotizaciones/nueva" className="enlace mt-4 flex min-h-[44px] items-center justify-center gap-2 text-base">
+              <IconoDocumento className="h-5 w-5" /> ¿Empresa? Pide una cotización formal
             </Link>
           </div>
         </aside>
+      </div>
+
+      {/* Barra fija móvil: total + continuar, sobre la navegación inferior */}
+      <div className="fixed inset-x-2.5 bottom-[calc(90px+env(safe-area-inset-bottom))] z-flotante rounded-[20px] border-2 border-carbon bg-white px-3 py-2.5 shadow-dura md:hidden">
+        <div className="flex items-center gap-3">
+          <div className="shrink-0">
+            <p className="text-sm text-gris-600">Total</p>
+            <p className="text-xl font-bold leading-tight">{formatoCLP(total())}</p>
+          </div>
+          <button onClick={() => navigate('/checkout')} className="btn-primario flex-1">
+            Continuar <IconoFlecha className="h-5 w-5" />
+          </button>
+        </div>
       </div>
     </div>
   );

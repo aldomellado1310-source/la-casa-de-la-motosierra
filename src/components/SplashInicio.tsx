@@ -32,13 +32,13 @@ export default function SplashInicio() {
   return (
     <div
       onClick={() => setEstado('saliendo')}
-      className={`fixed inset-0 z-modal flex items-center justify-center bg-carbon ${
+      className={`fixed inset-0 z-modal flex items-center justify-center bg-naranja ${
         estado === 'saliendo' ? 'splash-salida' : ''
       }`}
       aria-hidden="true"
     >
-      <div className="animar-hero logo-animado scale-125 sm:scale-150">
-        <LogoLCM tono="claro" tamano="lg" conBajada />
+      <div className="animar-hero">
+        <LogoLCM tono="claro" tamano="lg" />
       </div>
     </div>
   );

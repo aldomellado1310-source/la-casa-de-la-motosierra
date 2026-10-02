@@ -13,7 +13,20 @@ import { DATOS_TRANSFERENCIA, iniciarPagoMercadoPago, iniciarPagoWebpay, redirig
 import { REGIONES_CHILE, calcularOpcionesEnvio } from '../services/envios';
 import { formatoCLP } from '../utils/precio';
 import { useSeo } from '../utils/seo';
+import { IconoCandado } from '../components/Iconos';
 import type { Direccion, MetodoEnvio, MetodoPago, Pedido } from '../types';
+
+/** Título de paso con número grande en círculo */
+function TituloPaso({ n, children }: { n: number; children: React.ReactNode }) {
+  return (
+    <h2 className="flex items-center gap-3 text-xl font-bold">
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-carbon text-lg text-white" aria-hidden="true">
+        {n}
+      </span>
+      <span><span className="sr-only">Paso {n}: </span>{children}</span>
+    </h2>
+  );
+}
 
 export default function Checkout() {
   useSeo({
@@ -47,8 +60,8 @@ export default function Checkout() {
 
   if (items.length === 0 && !pedidoTransferencia) {
     return (
-      <div className="mx-auto max-w-3xl px-4 py-16 text-center">
-        <p className="font-semibold">No tienes productos en el carrito.</p>
+      <div className="contenedor max-w-xl py-16 text-center">
+        <p className="text-xl font-bold">No tienes productos en el carrito.</p>
         <Link to="/tienda" className="btn-primario mt-4">Ir a la tienda</Link>
       </div>
     );
@@ -152,20 +165,20 @@ export default function Checkout() {
   // --- Pantalla de transferencia (post-creación del pedido) ---
   if (pedidoTransferencia) {
     return (
-      <div className="mx-auto max-w-2xl px-4 py-10">
+      <div className="contenedor max-w-2xl py-10">
         <div className="tarjeta">
           <h1 className="font-display text-2xl font-bold uppercase tracking-wide text-grafito">Pedido {pedidoTransferencia.id} creado</h1>
-          <p className="mt-2 text-sm">
+          <p className="mt-3 text-base">
             Transfiere <strong className="text-naranja-oscuro">{formatoCLP(pedidoTransferencia.total)}</strong> a la siguiente cuenta y sube el
             comprobante. Tu pedido quedará <strong>pendiente de validación</strong> hasta que confirmemos el pago.
           </p>
-          <dl className="mt-4 space-y-1 rounded-lg bg-gris-fondo p-4 text-sm">
-            <div className="flex justify-between"><dt>Banco</dt><dd className="font-semibold">{DATOS_TRANSFERENCIA.banco}</dd></div>
-            <div className="flex justify-between"><dt>Tipo de cuenta</dt><dd className="font-semibold">{DATOS_TRANSFERENCIA.tipoCuenta}</dd></div>
-            <div className="flex justify-between"><dt>N° de cuenta</dt><dd className="font-semibold">{DATOS_TRANSFERENCIA.numeroCuenta}</dd></div>
-            <div className="flex justify-between"><dt>Titular</dt><dd className="font-semibold">{DATOS_TRANSFERENCIA.titular}</dd></div>
-            <div className="flex justify-between"><dt>RUT</dt><dd className="font-semibold">{DATOS_TRANSFERENCIA.rut}</dd></div>
-            <div className="flex justify-between"><dt>Correo</dt><dd className="font-semibold">{DATOS_TRANSFERENCIA.email}</dd></div>
+          <dl className="mt-5 space-y-2 rounded-xl bg-gris-fondo p-4 text-base">
+            <div className="flex flex-wrap justify-between gap-x-3"><dt>Banco</dt><dd className="font-semibold">{DATOS_TRANSFERENCIA.banco}</dd></div>
+            <div className="flex flex-wrap justify-between gap-x-3"><dt>Tipo de cuenta</dt><dd className="font-semibold">{DATOS_TRANSFERENCIA.tipoCuenta}</dd></div>
+            <div className="flex flex-wrap justify-between gap-x-3"><dt>N° de cuenta</dt><dd className="font-semibold">{DATOS_TRANSFERENCIA.numeroCuenta}</dd></div>
+            <div className="flex flex-wrap justify-between gap-x-3"><dt>Titular</dt><dd className="font-semibold">{DATOS_TRANSFERENCIA.titular}</dd></div>
+            <div className="flex flex-wrap justify-between gap-x-3"><dt>RUT</dt><dd className="font-semibold">{DATOS_TRANSFERENCIA.rut}</dd></div>
+            <div className="flex flex-wrap justify-between gap-x-3"><dt>Correo</dt><dd className="font-semibold">{DATOS_TRANSFERENCIA.email}</dd></div>
           </dl>
           <div className="mt-4">
             <label className="etiqueta" htmlFor="chk-comprobante">Comprobante de transferencia (imagen o PDF)</label>
@@ -177,8 +190,8 @@ export default function Checkout() {
               className="campo"
             />
           </div>
-          {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
-          <button onClick={enviarComprobante} disabled={!comprobante || procesando} className="btn-primario mt-4 w-full py-3">
+          {error && <p role="alert" className="mt-3 rounded-lg bg-oferta/10 p-3 text-base font-semibold text-oferta">{error}</p>}
+          <button onClick={enviarComprobante} disabled={!comprobante || procesando} className="btn-primario btn-grande mt-5 w-full">
             {procesando ? 'Subiendo…' : 'Enviar comprobante'}
           </button>
         </div>
@@ -187,19 +200,22 @@ export default function Checkout() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-6">
-      <h1 className="mb-6 titulo-seccion">Finalizar compra</h1>
+    <div className="contenedor max-w-6xl py-6 sm:py-8">
+      <h1 className="titulo-seccion">Finalizar compra</h1>
+      <p className="mt-2 flex items-center gap-2 text-base text-gris-600">
+        <IconoCandado className="h-5 w-5 text-verde" /> Compra segura. Revisa cada paso y paga al final.
+      </p>
 
-      <div className="flex flex-col gap-6 lg:flex-row">
-        <div className="flex-1 space-y-6">
+      <div className="mt-6 flex flex-col gap-6 lg:flex-row lg:items-start">
+        <div className="min-w-0 flex-1 space-y-6">
           {/* Datos del comprador (invitado) */}
           {!usuario && (
             <section className="tarjeta">
-              <h2 className="mb-3 font-bold">1. Tus datos</h2>
-              <p className="mb-3 text-xs text-gris-600">
-                ¿Ya tienes cuenta? <Link to="/ingresar" className="font-semibold text-verde hover:underline">Ingresa aquí</Link> para usar tus direcciones guardadas.
+              <TituloPaso n={1}>Tus datos</TituloPaso>
+              <p className="mb-4 mt-2 text-base text-gris-600">
+                No necesitas crear cuenta. ¿Ya tienes una? <Link to="/ingresar" className="enlace">Ingresa aquí</Link>.
               </p>
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <label className="etiqueta" htmlFor="chk-nombre">Nombre completo</label>
                   <input id="chk-nombre" autoComplete="name" value={nombreInvitado} onChange={(e) => setNombreInvitado(e.target.value)} className="campo" placeholder="Juan Soto" />
@@ -214,40 +230,38 @@ export default function Checkout() {
 
           {/* Método de entrega */}
           <section className="tarjeta">
-            <h2 className="mb-1 font-bold">{usuario ? '1' : '2'}. Método de entrega</h2>
-            <p className="mb-3 text-xs text-gris-600">El costo se muestra aquí, antes de pagar — sin sorpresas de “envío por pagar”.</p>
+            <TituloPaso n={usuario ? 1 : 2}>¿Cómo quieres recibirlo?</TituloPaso>
+            <p className="mb-4 mt-2 text-base text-gris-600">El costo del envío se muestra aquí, antes de pagar. Sin sorpresas.</p>
 
             <div className="mb-4">
               <label className="etiqueta" htmlFor="chk-region">Región de destino</label>
-              <select id="chk-region" value={region} onChange={(e) => setRegion(e.target.value)} className="campo sm:max-w-xs">
+              <select id="chk-region" value={region} onChange={(e) => setRegion(e.target.value)} className="campo sm:max-w-sm">
                 {REGIONES_CHILE.map((r) => <option key={r} value={r}>{r}</option>)}
               </select>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-3">
               {opcionesEnvio.map((op) => (
                 <label
                   key={op.metodo}
-                  className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors ${
-                    metodoEnvio === op.metodo ? 'border-naranja bg-naranja/5' : 'border-borde hover:border-verde'
-                  }`}
+                  className={`opcion ${metodoEnvio === op.metodo ? 'opcion-activa' : ''}`}
                 >
                   <input
                     type="radio"
                     name="envio"
                     checked={metodoEnvio === op.metodo}
                     onChange={() => setMetodoEnvio(op.metodo)}
-                    className="mt-1 accent-naranja"
+                    className="control-grande"
                   />
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-sm font-bold">{op.nombre}</span>
-                      <span className={`text-sm font-extrabold ${op.costo === 0 ? 'text-verde' : 'text-naranja-oscuro'}`}>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-baseline justify-between gap-x-3">
+                      <span className="text-lg font-bold">{op.nombre}</span>
+                      <span className={`text-lg font-bold ${op.costo === 0 ? 'text-verde' : 'text-grafito'}`}>
                         {op.costo === 0 ? 'Gratis' : formatoCLP(op.costo)}
                       </span>
                     </div>
-                    <p className="text-xs text-gris-600">{op.descripcion}</p>
-                    <p className="text-xs font-medium text-verde">{op.plazoEstimado}</p>
+                    <p className="text-base text-gris-600">{op.descripcion}</p>
+                    <p className="text-base font-semibold text-verde">{op.plazoEstimado}</p>
                   </div>
                 </label>
               ))}
@@ -256,7 +270,7 @@ export default function Checkout() {
             {/* Dirección de despacho */}
             {metodoEnvio !== 'retiro_tienda' && (
               <div className="mt-4 border-t border-borde pt-4">
-                <h3 className="mb-2 text-sm font-bold">Dirección de despacho</h3>
+                <h3 className="mb-3 text-lg font-bold">¿A qué dirección lo enviamos?</h3>
                 {usuario && usuario.direcciones.length > 0 && (
                   <div className="mb-3">
                     <label className="etiqueta" htmlFor="chk-dir-guardada">Usar dirección guardada</label>
@@ -269,7 +283,7 @@ export default function Checkout() {
                   </div>
                 )}
                 {!direccionId && (
-                  <div className="grid gap-3 sm:grid-cols-3">
+                  <div className="grid gap-4 sm:grid-cols-3">
                     <div className="sm:col-span-2">
                       <label className="etiqueta" htmlFor="chk-calle">Calle</label>
                       <input id="chk-calle" value={dirNueva.calle} onChange={(e) => setDirNueva({ ...dirNueva, calle: e.target.value })} className="campo" />
@@ -290,23 +304,21 @@ export default function Checkout() {
 
           {/* Medio de pago */}
           <section className="tarjeta">
-            <h2 className="mb-3 font-bold">{usuario ? '2' : '3'}. Medio de pago</h2>
-            <div className="space-y-2">
+            <TituloPaso n={usuario ? 2 : 3}>¿Cómo quieres pagar?</TituloPaso>
+            <div className="mt-4 space-y-3">
               {[
-                { id: 'webpay' as const, nombre: 'Webpay Plus', detalle: 'Débito, crédito y prepago — Transbank' },
-                { id: 'mercadopago' as const, nombre: 'Mercado Pago', detalle: 'Tarjetas con cuotas y saldo Mercado Pago' },
-                { id: 'transferencia' as const, nombre: 'Transferencia bancaria', detalle: 'Sube el comprobante; validamos y despachamos' },
+                { id: 'webpay' as const, nombre: 'Tarjeta (Webpay)', detalle: 'Débito, crédito o prepago. Pago seguro de Transbank.' },
+                { id: 'mercadopago' as const, nombre: 'Mercado Pago', detalle: 'Tarjetas con cuotas o saldo de Mercado Pago.' },
+                { id: 'transferencia' as const, nombre: 'Transferencia bancaria', detalle: 'Te damos los datos de la cuenta. Envías el comprobante y despachamos.' },
               ].map((mp) => (
                 <label
                   key={mp.id}
-                  className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 transition-colors ${
-                    metodoPago === mp.id ? 'border-naranja bg-naranja/5' : 'border-borde hover:border-verde'
-                  }`}
+                  className={`opcion ${metodoPago === mp.id ? 'opcion-activa' : ''}`}
                 >
-                  <input type="radio" name="pago" checked={metodoPago === mp.id} onChange={() => setMetodoPago(mp.id)} className="accent-naranja" />
+                  <input type="radio" name="pago" checked={metodoPago === mp.id} onChange={() => setMetodoPago(mp.id)} className="control-grande" />
                   <div>
-                    <span className="text-sm font-bold">{mp.nombre}</span>
-                    <p className="text-xs text-gris-600">{mp.detalle}</p>
+                    <span className="text-lg font-bold">{mp.nombre}</span>
+                    <p className="text-base text-gris-600">{mp.detalle}</p>
                   </div>
                 </label>
               ))}
@@ -315,31 +327,31 @@ export default function Checkout() {
         </div>
 
         {/* Resumen lateral */}
-        <aside className="lg:w-80 lg:shrink-0">
-          <div className="tarjeta sticky top-28">
-            <h2 className="mb-3 font-bold">Resumen del pedido</h2>
-            <ul className="max-h-48 space-y-2 overflow-y-auto text-sm">
+        <aside className="lg:sticky lg:top-44 lg:w-96 lg:shrink-0">
+          <div className="tarjeta">
+            <h2 className="mb-3 text-xl font-bold">Resumen del pedido</h2>
+            <ul className="max-h-60 space-y-2 overflow-y-auto text-base">
               {items.map((it) => (
                 <li key={it.productoId} className="flex justify-between gap-2">
-                  <span className="line-clamp-1">{it.cantidad}× {it.nombre}</span>
+                  <span className="line-clamp-2">{it.cantidad} × {it.nombre}</span>
                   <span className="shrink-0 font-semibold">{formatoCLP(it.precioUnitario * it.cantidad)}</span>
                 </li>
               ))}
             </ul>
-            <div className="mt-3 space-y-1 border-t border-borde pt-3 text-sm">
+            <div className="mt-3 space-y-2 border-t border-borde pt-3 text-base">
               <div className="flex justify-between"><span>Subtotal</span><span>{formatoCLP(total())}</span></div>
-              <div className="flex justify-between">
+              <div className="flex justify-between gap-3">
                 <span>Envío ({envioElegido.nombre})</span>
                 <span className={costoEnvio === 0 ? 'font-semibold text-verde' : ''}>
                   {costoEnvio === 0 ? 'Gratis' : formatoCLP(costoEnvio)}
                 </span>
               </div>
-              <div className="flex justify-between border-t border-borde pt-2 text-base font-extrabold">
-                <span>Total</span><span className="text-naranja-oscuro">{formatoCLP(totalFinal)}</span>
+              <div className="flex items-baseline justify-between border-t border-borde pt-3 text-xl font-bold">
+                <span>Total a pagar</span><span className="text-2xl">{formatoCLP(totalFinal)}</span>
               </div>
             </div>
-            {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
-            <button onClick={pagar} disabled={procesando} className="btn-primario mt-4 w-full py-3">
+            {error && <p role="alert" className="mt-4 rounded-lg bg-oferta/10 p-3 text-base font-semibold text-oferta">{error}</p>}
+            <button onClick={pagar} disabled={procesando} className="btn-primario btn-grande mt-5 w-full">
               {procesando ? 'Procesando…' : metodoPago === 'transferencia' ? 'Crear pedido' : `Pagar ${formatoCLP(totalFinal)}`}
             </button>
           </div>

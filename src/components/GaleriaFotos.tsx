@@ -1,8 +1,9 @@
 ﻿// Galería de fotos de producto con zoom al pasar el mouse
 // y miniaturas cuando hay varias imágenes.
 import { useRef, useState } from 'react';
+import FotoProducto, { esFotoProvisoria } from './FotoProducto';
 
-export default function GaleriaFotos({ fotos, alt }: { fotos: string[]; alt: string }) {
+export default function GaleriaFotos({ fotos, alt, categoria }: { fotos: string[]; alt: string; categoria?: string }) {
   const [actual, setActual] = useState(0);
   const [zoom, setZoom] = useState(false);
   const [origen, setOrigen] = useState('50% 50%');
@@ -19,11 +20,22 @@ export default function GaleriaFotos({ fotos, alt }: { fotos: string[]; alt: str
 
   const foto = fotos[actual] ?? fotos[0];
 
+  // Sin foto real: respaldo con el ícono de la categoría, sin zoom
+  if (esFotoProvisoria(foto)) {
+    return (
+      <FotoProducto
+        alt={alt}
+        categoria={categoria}
+        className="aspect-[4/3] w-full rounded-xl border border-borde sm:aspect-square"
+      />
+    );
+  }
+
   return (
     <div>
       <div
         ref={contenedor}
-        className="relative aspect-square cursor-zoom-in overflow-hidden rounded-xl border border-borde bg-white"
+        className="relative aspect-[4/3] cursor-zoom-in overflow-hidden rounded-xl border border-borde bg-white sm:aspect-square"
         onMouseEnter={() => setZoom(true)}
         onMouseLeave={() => setZoom(false)}
         onMouseMove={moverMouse}
@@ -31,14 +43,14 @@ export default function GaleriaFotos({ fotos, alt }: { fotos: string[]; alt: str
         <img
           src={foto}
           alt={alt}
-          className="h-full w-full object-cover transition-transform duration-150"
+          className="h-full w-full object-contain transition-transform duration-150"
           style={{
             transform: zoom ? 'scale(2)' : 'scale(1)',
             transformOrigin: origen,
           }}
         />
         {zoom && (
-          <span className="pointer-events-none absolute bottom-2 left-2 rounded bg-grafito/70 px-2 py-0.5 text-[11px] text-white">
+          <span className="pointer-events-none absolute bottom-2 left-2 rounded bg-grafito/70 px-2 py-0.5 text-sm text-white">
             Zoom activo
           </span>
         )}
@@ -51,7 +63,7 @@ export default function GaleriaFotos({ fotos, alt }: { fotos: string[]; alt: str
             <button
               key={f}
               onClick={() => setActual(i)}
-              className={`h-16 w-16 shrink-0 overflow-hidden rounded-lg border-2 transition-colors ${
+              className={`h-[72px] w-[72px] shrink-0 overflow-hidden rounded-lg border-2 transition-colors ${
                 i === actual ? 'border-naranja' : 'border-borde hover:border-verde'
               }`}
               aria-label={`Foto ${i + 1}`}

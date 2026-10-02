@@ -8,12 +8,12 @@ import { actualizarEstadoPedido, descontarStockPedido } from './pedidos';
 
 /** Datos bancarios para pago por transferencia */
 export const DATOS_TRANSFERENCIA = {
-  banco: 'BancoEstado',
+  banco: 'Banco Santander',
   tipoCuenta: 'Cuenta Corriente',
-  numeroCuenta: '12345678901',
-  titular: 'La Casa de la Motosierra SpA',
-  rut: '77.123.456-7',
-  email: 'pagos@lacasadelamotosierra.cl',
+  numeroCuenta: '2726354-2',
+  titular: 'La Casa de la Motosierra Aysén SpA',
+  rut: '78.269.561-4',
+  email: 'lacasadelamotosierraaysenspa@gmail.com',
 };
 
 interface RespuestaWebpay {

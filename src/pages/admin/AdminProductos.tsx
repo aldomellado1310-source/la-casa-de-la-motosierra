@@ -502,7 +502,7 @@ export default function AdminProductos() {
                     <button onClick={() => void cambiarStock(p, 1)} className="h-6 w-6 rounded bg-gris-fondo font-bold hover:bg-borde" aria-label="Sumar stock">+</button>
                   </div>
                 </td>
-                <td className="px-3 py-2"><BadgeStock producto={p} /></td>
+                <td className="px-3 py-2"><BadgeStock producto={p} compacto /></td>
                 <td className="px-3 py-2">
                   <button onClick={() => setEditando({ ...p })} className="mr-3 font-semibold text-verde hover:underline">Editar</button>
                   <button onClick={() => void borrar(p)} className="text-red-600 hover:underline">Eliminar</button>

@@ -82,11 +82,11 @@ export default function MiCuenta() {
   ];
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-6">
+    <div className="contenedor max-w-5xl py-6">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="titulo-seccion">Hola, {usuario.nombre.split(' ')[0]}</h1>
-          <p className="text-sm text-gris-600">
+          <p className="text-base text-gris-600">
             {usuario.tipo === 'empresa'
               ? `Cuenta empresa · ${usuario.razonSocial} (${usuario.rut})`
               : 'Cuenta particular'}
@@ -109,20 +109,24 @@ export default function MiCuenta() {
 
       {/* Aviso de rol para que el admin no se pierda en la vista de cliente */}
       {usuario.rol === 'admin' && (
-        <p className="mb-6 rounded-lg bg-verde-badge p-3 text-sm text-verde-oscuro">
+        <p className="mb-6 rounded-lg bg-verde-badge p-3 text-base text-verde-oscuro">
           Estás en la vista de cliente. El inventario, precios, ofertas, pedidos y cotizaciones
           se administran en el <button onClick={() => navigate('/admin')} className="font-bold underline">panel de administración</button>.
         </p>
       )}
 
       {/* Pestañas */}
-      <div className="mb-6 flex gap-1 overflow-x-auto border-b border-borde">
+      {/* Móvil: grilla de botones (todas las secciones a la vista, sin deslizar) */}
+      <div className="mb-6 grid grid-cols-2 gap-2 sm:flex sm:gap-1 sm:border-b sm:border-borde">
         {PESTANIAS.map((p) => (
           <button
             key={p.id}
             onClick={() => setPestania(p.id)}
-            className={`shrink-0 border-b-2 px-4 py-2.5 text-sm font-semibold transition-colors ${
-              pestania === p.id ? 'border-naranja text-naranja-oscuro' : 'border-transparent text-gris-600 hover:text-verde'
+            aria-pressed={pestania === p.id}
+            className={`min-h-[48px] rounded-[10px] border-2 px-3 text-base font-semibold transition-colors sm:shrink-0 sm:rounded-none sm:border-0 sm:border-b-[3px] sm:px-4 ${
+              pestania === p.id
+                ? 'border-naranja bg-naranja-suave text-grafito sm:bg-transparent'
+                : 'border-borde text-gris-600 hover:text-grafito sm:border-transparent'
             }`}
           >
             {p.texto}
@@ -153,12 +157,12 @@ export default function MiCuenta() {
       {pestania === 'maquinas' && (
         <div className="grid gap-6 md:grid-cols-2">
           <div className="space-y-3">
-            <p className="text-sm text-gris-600">
+            <p className="text-base text-gris-600">
               Registra tus máquinas y la tienda te mostrará solo los repuestos compatibles con
               un clic, sin volver a elegir marca y modelo cada vez.
             </p>
             {(usuario.maquinas ?? []).length === 0 && (
-              <div className="tarjeta py-8 text-center text-sm text-gris-600">
+              <div className="tarjeta py-8 text-center text-base text-gris-600">
                 Aún no registras máquinas.
               </div>
             )}
@@ -172,12 +176,12 @@ export default function MiCuenta() {
                       if (m.modelo) params.set('modelo', m.modelo);
                       navigate(`/tienda?${params.toString()}`);
                     }}
-                    className="text-sm font-semibold text-verde hover:underline"
+                    className="text-base font-semibold text-verde hover:underline"
                   >
                     Ver repuestos compatibles →
                   </button>
                 </div>
-                <button onClick={() => void eliminarMaquina(m.id)} className="text-xs text-red-600 hover:underline">
+                <button onClick={() => void eliminarMaquina(m.id)} className="text-sm text-oferta hover:underline">
                   Eliminar
                 </button>
               </div>
@@ -227,19 +231,19 @@ export default function MiCuenta() {
       {/* Historial de pedidos */}
       {pestania === 'pedidos' && (
         <div className="space-y-3">
-          {pedidos.length === 0 && <p className="text-sm text-gris-600">Aún no tienes pedidos.</p>}
+          {pedidos.length === 0 && <p className="text-base text-gris-600">Aún no tienes pedidos.</p>}
           {pedidos.map((p) => (
             <div key={p.id} className="tarjeta">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <span className="font-bold">{p.id}</span>
-                  <span className="ml-3 text-xs text-gris-600">{new Date(p.fecha).toLocaleDateString('es-CL')}</span>
+                  <span className="ml-3 text-sm text-gris-600">{new Date(p.fecha).toLocaleDateString('es-CL')}</span>
                 </div>
-                <span className="rounded-full bg-verde/10 px-3 py-1 text-xs font-semibold text-verde">
+                <span className="rounded-full bg-verde/10 px-3 py-1 text-sm font-semibold text-verde">
                   {ETIQUETAS_ESTADO_PEDIDO[p.estado]}
                 </span>
               </div>
-              <ul className="mt-2 text-sm text-grafito/80">
+              <ul className="mt-2 text-base text-grafito/80">
                 {p.items.map((it) => (
                   <li key={it.productoId}>{it.cantidad}× {it.nombre}</li>
                 ))}
@@ -254,7 +258,7 @@ export default function MiCuenta() {
       {pestania === 'cotizaciones' && (
         <div className="space-y-3">
           {cotizaciones.length === 0 && (
-            <p className="text-sm text-gris-600">
+            <p className="text-base text-gris-600">
               Aún no tienes cotizaciones. Arma tu carrito y solicita una desde ahí.
             </p>
           )}
@@ -263,15 +267,15 @@ export default function MiCuenta() {
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <span className="font-bold">{c.folio}</span>
-                  <span className="ml-3 text-xs text-gris-600">
+                  <span className="ml-3 text-sm text-gris-600">
                     {new Date(c.fecha).toLocaleDateString('es-CL')} · válida hasta {new Date(c.validaHasta).toLocaleDateString('es-CL')}
                   </span>
                 </div>
-                <span className="rounded-full bg-naranja/10 px-3 py-1 text-xs font-semibold text-naranja-oscuro">
+                <span className="rounded-full bg-naranja/10 px-3 py-1 text-sm font-semibold text-naranja-oscuro">
                   {ETIQUETAS_ESTADO_COTIZACION[c.estado]}
                 </span>
               </div>
-              <p className="mt-2 text-sm text-grafito/80">{c.items.length} ítem(s) · Total {formatoCLP(c.total)}</p>
+              <p className="mt-2 text-base text-grafito/80">{c.items.length} ítem(s) · Total {formatoCLP(c.total)}</p>
               <button onClick={() => descargarPdfCotizacion(c)} className="btn-secundario mt-3">
                 Descargar PDF
               </button>
@@ -284,15 +288,15 @@ export default function MiCuenta() {
       {pestania === 'direcciones' && (
         <div className="grid gap-6 md:grid-cols-2">
           <div className="space-y-3">
-            {usuario.direcciones.length === 0 && <p className="text-sm text-gris-600">No tienes direcciones guardadas.</p>}
+            {usuario.direcciones.length === 0 && <p className="text-base text-gris-600">No tienes direcciones guardadas.</p>}
             {usuario.direcciones.map((d) => (
               <div key={d.id} className="tarjeta flex items-start justify-between gap-3">
                 <div>
                   <p className="font-bold">{d.alias}</p>
-                  <p className="text-sm text-grafito/80">{d.calle} {d.numero}, {d.comuna}</p>
-                  <p className="text-xs text-gris-600">Región de {d.region}</p>
+                  <p className="text-base text-grafito/80">{d.calle} {d.numero}, {d.comuna}</p>
+                  <p className="text-sm text-gris-600">Región de {d.region}</p>
                 </div>
-                <button onClick={() => eliminarDireccion(d.id)} className="text-xs text-red-600 hover:underline">
+                <button onClick={() => eliminarDireccion(d.id)} className="text-sm text-oferta hover:underline">
                   Eliminar
                 </button>
               </div>

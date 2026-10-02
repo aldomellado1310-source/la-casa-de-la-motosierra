@@ -8,6 +8,8 @@ import { Link, Route, Routes, useLocation } from 'react-router-dom';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import BotonWhatsApp from './components/BotonWhatsApp';
+import BarraInferior from './components/BarraInferior';
+import AvisoCarrito from './components/AvisoCarrito';
 import SplashInicio from './components/SplashInicio';
 import RutaProtegida from './components/RutaProtegida';
 import Home from './pages/Home';
@@ -38,7 +40,12 @@ const Privacidad = lazy(() => import('./pages/Privacidad'));
 /** Vuelve al inicio de la página en cada navegación */
 function ScrollArriba() {
   const { pathname } = useLocation();
-  useEffect(() => window.scrollTo(0, 0), [pathname]);
+  // Cuerpo en bloque a propósito: la forma corta `() => window.scrollTo(0, 0)`
+  // devuelve el resultado de scrollTo y React lo trataría como función de
+  // limpieza (rompe con "destroy is not a function" si algo envuelve scrollTo).
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
   return null;
 }
 
@@ -52,11 +59,11 @@ function NoEncontrada() {
     <div className="mx-auto max-w-xl px-4 py-16 text-center">
       <p className="font-display text-6xl font-bold text-borde">404</p>
       <h1 className="titulo-seccion mt-2">Esta página se fue al monte</h1>
-      <p className="mt-3 text-sm text-gris-600">
+      <p className="mt-3 text-base text-gris-600">
         La dirección que buscas no existe o fue movida. Lo que sí tenemos es el
         repuesto que andas buscando.
       </p>
-      <div className="mt-6 flex justify-center gap-2">
+      <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
         <Link to="/tienda" className="btn-primario">Ir a la tienda</Link>
         <Link to="/" className="btn-secundario">Volver al inicio</Link>
       </div>
@@ -80,14 +87,17 @@ export default function App() {
   }, [usuario?.uid, sincronizarCarrito]);
 
   return (
-    <div className="flex min-h-screen flex-col">
+    // En móvil se reserva el alto de la barra inferior fija
+    <div className="flex min-h-screen flex-col pb-[calc(96px+env(safe-area-inset-bottom))] md:pb-0">
       <SplashInicio />
       <ScrollArriba />
       <Header />
       <main className="flex-1">
         <Suspense
           fallback={
-            <div className="flex min-h-[40vh] items-center justify-center text-verde">Cargando…</div>
+            <div className="flex min-h-[40vh] items-center justify-center text-lg font-semibold text-gris-600" role="status">
+              Cargando…
+            </div>
           }
         >
           <Routes>
@@ -130,6 +140,8 @@ export default function App() {
       </main>
       <Footer />
       <BotonWhatsApp />
+      <BarraInferior />
+      <AvisoCarrito />
     </div>
   );
 }

@@ -6,7 +6,7 @@ const SECCIONES: { titulo: string; parrafos: string[] }[] = [
   {
     titulo: '1. Responsable del tratamiento',
     parrafos: [
-      'La Casa de la Motosierra SpA, RUT 77.123.456-7, Teniente Merino 500, Puerto Aysén, es responsable del tratamiento de los datos personales recolectados en este sitio, conforme a la Ley N° 19.628 sobre Protección de la Vida Privada.',
+      'La Casa de la Motosierra Aysén SpA, RUT 78.269.561-4, Teniente Merino 500, Puerto Aysén, es responsable del tratamiento de los datos personales recolectados en este sitio, conforme a la Ley N° 19.628 sobre Protección de la Vida Privada.',
     ],
   },
   {
@@ -34,7 +34,7 @@ const SECCIONES: { titulo: string; parrafos: string[] }[] = [
   {
     titulo: '5. Tus derechos',
     parrafos: [
-      'Conforme a la Ley 19.628, el cliente puede solicitar en cualquier momento el acceso, la rectificación o la eliminación de sus datos personales, escribiendo a ventas@lacasadelamotosierra.cl. Las solicitudes se responden dentro de 10 días hábiles.',
+      'Conforme a la Ley 19.628, el cliente puede solicitar en cualquier momento el acceso, la rectificación o la eliminación de sus datos personales, escribiendo a lacasadelamotosierraaysenspa@gmail.com. Las solicitudes se responden dentro de 10 días hábiles.',
       'La eliminación de la cuenta borra los datos personales, sin perjuicio de la información que la Tienda deba conservar por obligaciones tributarias.',
     ],
   },
@@ -52,14 +52,14 @@ export default function Privacidad() {
     descripcion: 'Cómo La Casa de la Motosierra recolecta, usa y protege tus datos personales, conforme a la Ley 19.628.',
   });
   return (
-    <div className="mx-auto max-w-3xl px-4 py-10">
+    <div className="contenedor max-w-3xl py-10">
       <h1 className="titulo-seccion mb-2">Política de privacidad</h1>
-      <p className="mb-8 text-sm text-gris-600">Última actualización: julio de 2026</p>
+      <p className="mb-8 text-base text-gris-600">Última actualización: julio de 2026</p>
       {SECCIONES.map((s) => (
         <section key={s.titulo} className="mb-6">
           <h2 className="mb-2 font-display text-xl font-bold uppercase tracking-wide">{s.titulo}</h2>
           {s.parrafos.map((p, i) => (
-            <p key={i} className="mb-2 text-sm leading-relaxed text-grafito/90">{p}</p>
+            <p key={i} className="mb-2 text-base leading-relaxed text-grafito/90">{p}</p>
           ))}
         </section>
       ))}

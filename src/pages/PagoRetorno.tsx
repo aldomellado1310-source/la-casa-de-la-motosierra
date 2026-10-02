@@ -99,11 +99,11 @@ export default function PagoRetorno() {
   }[estado];
 
   return (
-    <div className="mx-auto max-w-xl px-4 py-16 text-center">
+    <div className="contenedor max-w-xl py-16 text-center">
       <div className="tarjeta py-10">
         <contenido.Icono className={`mx-auto h-14 w-14 ${contenido.clase}`} />
         <h1 className={`mt-4 text-2xl font-extrabold ${contenido.clase}`}>{contenido.titulo}</h1>
-        <p className="mt-2 text-sm text-grafito/80">{detalle}</p>
+        <p className="mt-2 text-base text-grafito/80">{detalle}</p>
         <div className="mt-6 flex flex-col justify-center gap-2 sm:flex-row">
           {estado === 'exito' || estado === 'pendiente' ? (
             usuario ? (

@@ -30,14 +30,14 @@ export default function CotizacionNueva() {
   // Sin sesión: explicar el flujo e invitar a registrarse
   if (!usuario) {
     return (
-      <div className="mx-auto max-w-xl px-4 py-12 text-center">
+      <div className="contenedor max-w-xl py-12 text-center">
         <IconoDocumento className="mx-auto h-12 w-12 text-gris-600" />
         <h1 className="mt-4 font-display text-2xl font-bold uppercase tracking-wide text-grafito">Cotizaciones formales con folio y PDF</h1>
-        <p className="mt-2 text-sm text-grafito/80">
+        <p className="mt-2 text-base text-grafito/80">
           Ideal para faenas forestales, municipios, empresas y talleres. Arma tu carrito, solicita la cotización
           y descarga el PDF con folio, RUT, detalle, IVA y total — listo para respaldar tu orden de compra.
         </p>
-        <p className="mt-2 text-sm text-grafito/80">Necesitas una cuenta para solicitar cotizaciones.</p>
+        <p className="mt-2 text-base text-grafito/80">Necesitas una cuenta para solicitar cotizaciones.</p>
         <div className="mt-6 flex justify-center gap-2">
           <Link to="/registro" className="btn-primario">Crear cuenta empresa</Link>
           <Link to="/ingresar" className="btn-secundario">Ya tengo cuenta</Link>
@@ -49,11 +49,11 @@ export default function CotizacionNueva() {
   // Cotización recién creada: confirmación + descarga
   if (creada) {
     return (
-      <div className="mx-auto max-w-xl px-4 py-12 text-center">
+      <div className="contenedor max-w-xl py-12 text-center">
         <div className="tarjeta py-10">
           <IconoDocumento className="mx-auto h-12 w-12 text-verde" />
           <h1 className="mt-4 titulo-seccion">Cotización {creada.folio} creada</h1>
-          <p className="mt-2 text-sm text-grafito/80">
+          <p className="mt-2 text-base text-grafito/80">
             Válida hasta el {new Date(creada.validaHasta).toLocaleDateString('es-CL')}. También la encontrarás en
             “Mi cuenta → Cotizaciones”.
           </p>
@@ -68,9 +68,9 @@ export default function CotizacionNueva() {
 
   if (items.length === 0) {
     return (
-      <div className="mx-auto max-w-xl px-4 py-12 text-center">
+      <div className="contenedor max-w-xl py-12 text-center">
         <h1 className="font-display text-2xl font-bold uppercase tracking-wide text-grafito">Tu carrito está vacío</h1>
-        <p className="mt-2 text-sm text-grafito/80">
+        <p className="mt-2 text-base text-grafito/80">
           Agrega al carrito los productos que quieres cotizar y vuelve aquí para generar el documento formal.
         </p>
         <Link to="/tienda" className="btn-primario mt-6">Ir a la tienda</Link>
@@ -95,16 +95,16 @@ export default function CotizacionNueva() {
   };
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-6">
+    <div className="contenedor max-w-3xl py-6">
       <h1 className="mb-2 titulo-seccion">Solicitar cotización formal</h1>
-      <p className="mb-6 text-sm text-gris-600">
+      <p className="mb-6 text-base text-gris-600">
         Se genera un PDF con folio, fecha, tus datos {usuario.tipo === 'empresa' ? '(RUT y razón social)' : ''}, detalle de
         ítems, neto, IVA y total. Sin compromiso de compra.
       </p>
 
       <div className="tarjeta">
         <h2 className="mb-3 font-bold">Datos del solicitante</h2>
-        <dl className="grid gap-1 text-sm sm:grid-cols-2">
+        <dl className="grid gap-1 text-base sm:grid-cols-2">
           <div><dt className="inline text-gris-600">Nombre: </dt><dd className="inline font-semibold">{usuario.nombre}</dd></div>
           <div><dt className="inline text-gris-600">Correo: </dt><dd className="inline font-semibold">{usuario.email}</dd></div>
           {usuario.tipo === 'empresa' && (
@@ -115,7 +115,7 @@ export default function CotizacionNueva() {
           )}
         </dl>
         {usuario.tipo === 'particular' && (
-          <p className="mt-2 text-xs text-gris-600">
+          <p className="mt-2 text-sm text-gris-600">
             Consejo: si cotizas para una empresa, cambia tu cuenta a tipo empresa para incluir RUT y razón social en el PDF.
           </p>
         )}
@@ -124,9 +124,9 @@ export default function CotizacionNueva() {
       <div className="tarjeta mt-4">
         <h2 className="mb-3 font-bold">Detalle de la cotización</h2>
         <div className="overflow-x-auto">
-        <table className="w-full min-w-[420px] text-sm">
+        <table className="w-full min-w-[420px] text-base">
           <thead>
-            <tr className="border-b border-borde text-left text-xs uppercase text-gris-600">
+            <tr className="border-b border-borde text-left text-sm uppercase text-gris-600">
               <th className="py-2">Producto</th>
               <th className="py-2 text-center">Cant.</th>
               <th className="py-2 text-right">P. unitario</th>
@@ -138,7 +138,7 @@ export default function CotizacionNueva() {
               <tr key={it.productoId} className="border-b border-borde">
                 <td className="py-2">
                   <span className="font-semibold">{it.nombre}</span>
-                  <span className="block text-xs text-gris-600">SKU {it.sku}</span>
+                  <span className="block text-sm text-gris-600">SKU {it.sku}</span>
                 </td>
                 <td className="py-2 text-center">{it.cantidad}</td>
                 <td className="py-2 text-right">{formatoCLP(it.precioUnitario)}</td>
@@ -148,7 +148,7 @@ export default function CotizacionNueva() {
           </tbody>
         </table>
         </div>
-        <div className="mt-3 ml-auto max-w-xs space-y-1 text-sm">
+        <div className="mt-3 ml-auto max-w-xs space-y-1 text-base">
           <div className="flex justify-between"><span>Neto</span><span>{formatoCLP(neto)}</span></div>
           <div className="flex justify-between"><span>IVA (19%)</span><span>{formatoCLP(iva)}</span></div>
           <div className="flex justify-between border-t border-borde pt-1 text-base font-extrabold">
@@ -169,7 +169,7 @@ export default function CotizacionNueva() {
         />
       </div>
 
-      {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
+      {error && <p className="mt-4 text-base text-oferta">{error}</p>}
       <button onClick={solicitar} disabled={procesando} className="btn-primario mt-6 w-full py-3">
         {procesando ? 'Generando…' : 'Generar cotización con folio y PDF'}
       </button>

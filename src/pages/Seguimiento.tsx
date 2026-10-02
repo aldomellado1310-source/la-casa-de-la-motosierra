@@ -63,11 +63,11 @@ export default function Seguimiento() {
   const cancelado = pedido?.estado === 'cancelado';
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-10">
+    <div className="contenedor max-w-2xl py-10">
       <h1 className="titulo-seccion mb-2 flex items-center gap-3">
         <IconoCamion className="h-7 w-7 text-naranja" /> Seguimiento de pedido
       </h1>
-      <p className="mb-6 text-sm text-gris-600">
+      <p className="mb-6 text-base text-gris-600">
         Ingresa el número de pedido que recibiste al comprar (ej: PED-20260706-A1B2).
         No necesitas iniciar sesión.
       </p>
@@ -93,7 +93,7 @@ export default function Seguimiento() {
       {buscado && !pedido && (
         <div className="tarjeta animar-entrada mt-6 text-center">
           <p className="font-semibold">No encontramos un pedido con ese número.</p>
-          <p className="mt-1 text-sm text-gris-600">
+          <p className="mt-1 text-base text-gris-600">
             Revisa que esté escrito igual que en tu correo de confirmación, o consúltanos directo:
           </p>
           <a
@@ -111,11 +111,11 @@ export default function Seguimiento() {
         <div className="tarjeta animar-entrada mt-6">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="font-bold">{pedido.id}</h2>
-            <span className="text-xs text-gris-600">{new Date(pedido.fecha).toLocaleDateString('es-CL')}</span>
+            <span className="text-sm text-gris-600">{new Date(pedido.fecha).toLocaleDateString('es-CL')}</span>
           </div>
 
           {cancelado ? (
-            <p className="mt-4 rounded-lg bg-red-50 p-3 text-sm font-semibold text-red-700">
+            <p className="mt-4 rounded-lg bg-red-50 p-3 text-base font-semibold text-red-700">
               Este pedido fue cancelado. Si tienes dudas, escríbenos por WhatsApp.
             </p>
           ) : (
@@ -134,16 +134,16 @@ export default function Seguimiento() {
                       />
                     )}
                     <span
-                      className={`relative z-10 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${
+                      className={`relative z-10 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-sm font-bold ${
                         completado ? 'bg-verde text-white' : 'border-2 border-borde bg-white text-gris-600'
                       }`}
                     >
                       {completado ? '✓' : i + 1}
                     </span>
                     <div className="pt-0.5">
-                      <p className={`text-sm ${actual ? 'font-bold text-grafito' : completado ? 'font-semibold text-grafito' : 'text-gris-600'}`}>
+                      <p className={`text-base ${actual ? 'font-bold text-grafito' : completado ? 'font-semibold text-grafito' : 'text-gris-600'}`}>
                         {ETIQUETAS_ESTADO_PEDIDO[h]}
-                        {actual && <span className="ml-2 rounded-full bg-verde-badge px-2 py-0.5 text-[10px] font-bold text-verde-oscuro">Estado actual</span>}
+                        {actual && <span className="ml-2 rounded-full bg-verde-badge px-2 py-0.5 text-sm font-bold text-verde-oscuro">Estado actual</span>}
                       </p>
                     </div>
                   </li>
@@ -153,7 +153,7 @@ export default function Seguimiento() {
           )}
 
           {/* Resumen */}
-          <div className="mt-5 border-t border-borde pt-4 text-sm">
+          <div className="mt-5 border-t border-borde pt-4 text-base">
             <p className="text-gris-600">
               {pedido.items.reduce((acc, i) => acc + i.cantidad, 0)} producto(s) ·{' '}
               {pedido.metodoEnvio === 'retiro_tienda' ? 'Retiro en tienda (Puerto Aysén)' : `Despacho por ${pedido.metodoEnvio}`}
