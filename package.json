@@ -34,6 +34,7 @@
     "vite": "^6.4.3"
   },
   "overrides": {
+    "@firebase/app": "0.14.13",
     "@firebase/firestore": {
       "@grpc/grpc-js": "^1.14.5"
     }
