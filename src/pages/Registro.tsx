@@ -1,6 +1,6 @@
-﻿// Registro: cliente particular o empresa/taller (RUT + razón social)
+// Registro: cliente particular o empresa/taller (RUT + razón social)
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../stores/useAuth';
 import { useCarrito } from '../stores/useCarrito';
 import { formatearRut, validarRut } from '../utils/rut';
@@ -15,8 +15,10 @@ export default function Registro() {
   const { registrar } = useAuth();
   const sincronizar = useCarrito((s) => s.sincronizarConUsuario);
   const [tipo, setTipo] = useState<'particular' | 'empresa'>('particular');
-  const [nombre, setNombre] = useState('');
-  const [email, setEmail] = useState('');
+  // Precarga desde /registro?nombre=…&email=… (p. ej. tras comprar como invitado)
+  const [params] = useSearchParams();
+  const [nombre, setNombre] = useState(() => (params.get('nombre') ?? '').slice(0, 120));
+  const [email, setEmail] = useState(() => (params.get('email') ?? '').slice(0, 254));
   const [password, setPassword] = useState('');
   const [rut, setRut] = useState('');
   const [razonSocial, setRazonSocial] = useState('');

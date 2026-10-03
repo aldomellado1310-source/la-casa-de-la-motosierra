@@ -120,6 +120,23 @@ service cloud.firestore {
 
     // Avisos "cuando llegue stock": cualquiera puede dejar su correo, pero
     // solo con la forma exacta que escribe el servicio (CN-014)
+    // Cupones de descuento: el checkout lee UNO por código (vista previa);
+    // listarlos y editarlos es solo del admin. El descuento real lo calcula
+    // la Cloud Function crearPedido leyendo este documento.
+    match /cupones/{codigo} {
+      allow get: if true;
+      allow list: if esAdmin();
+      allow create, update: if esAdmin()
+        && codigo.matches('^[A-Z0-9_-]{3,30}$')
+        && request.resource.data.codigo == codigo
+        && request.resource.data.tipo in ['porcentaje', 'monto']
+        && request.resource.data.valor is number
+        && request.resource.data.valor > 0
+        && (request.resource.data.tipo == 'monto' || request.resource.data.valor <= 100)
+        && request.resource.data.activo is bool;
+      allow delete: if esAdmin();
+    }
+
     match /avisosStock/{id} {
       allow create: if request.resource.data.keys().hasOnly(['productoId', 'sku', 'email', 'fecha', 'notificado'])
         && request.resource.data.keys().hasAll(['productoId', 'sku', 'email', 'fecha', 'notificado'])

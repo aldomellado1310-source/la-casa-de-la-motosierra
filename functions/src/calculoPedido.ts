@@ -12,6 +12,7 @@
 // aquí y el test lo hará notar.
 // ============================================================
 import { randomInt } from 'node:crypto';
+import { calcularDescuento, cuponVigente, normalizarCodigoCupon, type Cupon } from './cupones';
 
 // ------------------------------------------------------------
 // Tipos (subconjunto de src/types/index.ts)
@@ -49,7 +50,7 @@ export interface ItemPedido {
   preciosPorVolumen: TramoPrecio[];
 }
 
-export type MetodoPago = 'webpay' | 'mercadopago' | 'transferencia';
+export type MetodoPago = 'webpay' | 'mercadopago' | 'flow' | 'transferencia';
 export type MetodoEnvio = 'retiro_tienda' | 'starken' | 'chilexpress' | 'bluexpress';
 
 export interface DireccionPedido {
@@ -70,12 +71,14 @@ export interface SolicitudPedido {
   metodoPago: MetodoPago;
   metodoEnvio: MetodoEnvio;
   direccion?: DireccionPedido;
+  /** Código de cupón normalizado (mayúsculas); se valida contra Firestore */
+  cuponCodigo?: string;
 }
 
 // ------------------------------------------------------------
 // Constantes de negocio
 // ------------------------------------------------------------
-export const METODOS_PAGO: readonly MetodoPago[] = ['webpay', 'mercadopago', 'transferencia'];
+export const METODOS_PAGO: readonly MetodoPago[] = ['webpay', 'mercadopago', 'flow', 'transferencia'];
 export const METODOS_ENVIO: readonly MetodoEnvio[] = ['retiro_tienda', 'starken', 'chilexpress', 'bluexpress'];
 
 /** Igual a REGIONES_CHILE de src/services/envios.ts */
@@ -235,6 +238,14 @@ export function validarSolicitudPedido(cuerpo: unknown): Resultado<SolicitudPedi
     if (referencia) direccion.referencia = referencia;
   }
 
+  // Cupón (opcional): vacío = sin cupón; con caracteres raros = error
+  let cuponCodigo: string | undefined;
+  if (typeof cuerpo.cuponCodigo === 'string' && cuerpo.cuponCodigo.trim()) {
+    const normalizado = normalizarCodigoCupon(cuerpo.cuponCodigo);
+    if (!normalizado) return { ok: false, error: 'El código de descuento no es válido.' };
+    cuponCodigo = normalizado;
+  }
+
   const datos: SolicitudPedido = {
     items: Array.from(cantidades, ([productoId, cantidad]) => ({ productoId, cantidad })),
     nombreCliente,
@@ -243,6 +254,7 @@ export function validarSolicitudPedido(cuerpo: unknown): Resultado<SolicitudPedi
     metodoEnvio: metodoEnvio as MetodoEnvio,
   };
   if (direccion) datos.direccion = direccion;
+  if (cuponCodigo) datos.cuponCodigo = cuponCodigo;
   return { ok: true, datos };
 }
 
@@ -250,8 +262,11 @@ export function validarSolicitudPedido(cuerpo: unknown): Resultado<SolicitudPedi
 // Cálculo del pedido
 // ------------------------------------------------------------
 export type ResultadoCalculo =
-  | { ok: true; items: ItemPedido[]; subtotal: number; costoEnvio: number; total: number }
-  | { ok: false; codigo: 'stock' | 'no_disponible'; mensaje: string; productoId: string };
+  | {
+    ok: true; items: ItemPedido[]; subtotal: number; costoEnvio: number;
+    descuento: number; cuponCodigo?: string; total: number;
+  }
+  | { ok: false; codigo: 'stock' | 'no_disponible' | 'cupon'; mensaje: string; productoId?: string };
 
 /**
  * Calcula ítems, subtotal, envío y total a partir de los productos
@@ -263,6 +278,8 @@ export function calcularPedido(
   lineas: { productoId: string; cantidad: number }[],
   metodoEnvio: MetodoEnvio,
   region: string | undefined,
+  cupon?: Cupon,
+  ahora: Date = new Date(),
 ): ResultadoCalculo {
   const items: ItemPedido[] = [];
   for (const { productoId, cantidad } of lineas) {
@@ -296,7 +313,24 @@ export function calcularPedido(
   const subtotal = items.reduce((acc, i) => acc + i.precioUnitario * i.cantidad, 0);
   const peso = items.reduce((acc, i) => acc + i.cantidad, 0);
   const envio = costoEnvio(metodoEnvio, region, peso);
-  return { ok: true, items, subtotal, costoEnvio: envio, total: subtotal + envio };
+
+  // Cupón: descuento sobre el subtotal, antes del envío
+  let descuento = 0;
+  if (cupon) {
+    if (!cuponVigente(cupon, ahora)) {
+      return { ok: false, codigo: 'cupon', mensaje: `El código "${cupon.codigo}" ya no está vigente. Quítalo para continuar.` };
+    }
+    descuento = calcularDescuento(cupon, subtotal);
+    // Las pasarelas no cobran $0: un pedido gratis se coordina con la tienda
+    if (subtotal - descuento + envio <= 0) {
+      return { ok: false, codigo: 'cupon', mensaje: 'Este código deja el pedido sin costo. Escríbenos por WhatsApp para coordinarlo.' };
+    }
+  }
+  const resultado: ResultadoCalculo = {
+    ok: true, items, subtotal, costoEnvio: envio, descuento, total: subtotal - descuento + envio,
+  };
+  if (cupon) resultado.cuponCodigo = cupon.codigo;
+  return resultado;
 }
 
 // ------------------------------------------------------------

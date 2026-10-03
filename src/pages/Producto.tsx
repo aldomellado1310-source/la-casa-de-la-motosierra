@@ -18,6 +18,7 @@ import {
 import { enlaceWhatsApp } from '../config/tienda';
 import { useAviso } from '../stores/useAviso';
 import { enOferta, estadoStock, formatoCLP, porcentajeOferta, precioPorCantidad, precioVigente } from '../utils/precio';
+import { envioDesde } from '../services/envios';
 import { jsonLdProducto, useSeo } from '../utils/seo';
 import type { Producto as TipoProducto } from '../types';
 
@@ -255,6 +256,10 @@ export default function Producto() {
                   </>
                 )}
               </button>
+              <p className="flex items-start gap-2 text-base text-gris-600">
+                <IconoPin className="mt-0.5 h-5 w-5 shrink-0 text-verde" />
+                <span>Retiro gratis en Puerto Aysén, o envío a todo Chile desde {formatoCLP(envioDesde(cantidad))}.</span>
+              </p>
               {agregado && (
                 <Link to="/carrito" className="btn-secundario animar-entrada w-full">
                   Ir al carrito y pagar <IconoFlecha className="h-5 w-5" />

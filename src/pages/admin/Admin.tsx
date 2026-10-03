@@ -1,4 +1,4 @@
-﻿// Panel de administración con pestañas (solo rol admin)
+// Panel de administración con pestañas (solo rol admin)
 import { useState } from 'react';
 import AdminResumen from './AdminResumen';
 import AdminProductos from './AdminProductos';
@@ -6,19 +6,23 @@ import AdminPedidos from './AdminPedidos';
 import AdminCotizaciones from './AdminCotizaciones';
 import AdminCategorias from './AdminCategorias';
 import AdminClientes from './AdminClientes';
+import AdminVentas from './AdminVentas';
+import AdminCupones from './AdminCupones';
 import { MODO_DEMO } from '../../config/firebase';
 
-type Pestania = 'resumen' | 'productos' | 'categorias' | 'pedidos' | 'cotizaciones' | 'clientes';
+type Pestania = 'resumen' | 'ventas' | 'productos' | 'categorias' | 'pedidos' | 'cotizaciones' | 'cupones' | 'clientes';
 
 export default function Admin() {
   const [pestania, setPestania] = useState<Pestania>('resumen');
 
   const PESTANIAS: { id: Pestania; texto: string }[] = [
     { id: 'resumen', texto: 'Resumen' },
+    { id: 'ventas', texto: 'Ventas' },
     { id: 'productos', texto: 'Productos' },
     { id: 'categorias', texto: 'Categorías' },
     { id: 'pedidos', texto: 'Pedidos' },
     { id: 'cotizaciones', texto: 'Cotizaciones' },
+    { id: 'cupones', texto: 'Cupones' },
     { id: 'clientes', texto: 'Clientes' },
   ];
 
@@ -51,6 +55,8 @@ export default function Admin() {
       {pestania === 'categorias' && <AdminCategorias />}
       {pestania === 'pedidos' && <AdminPedidos />}
       {pestania === 'cotizaciones' && <AdminCotizaciones />}
+      {pestania === 'ventas' && <AdminVentas />}
+      {pestania === 'cupones' && <AdminCupones />}
       {pestania === 'clientes' && <AdminClientes />}
     </div>
   );

@@ -8,10 +8,34 @@ import {
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { FUNCTIONS_URL, MODO_DEMO, auth, db, storage } from '../config/firebase';
 import { ajustarStock, invalidarCacheProductos, obtenerProducto } from './productos';
-import type { EstadoPedido, Pedido } from '../types';
+import type { EstadoPedido, MetodoPago, Pedido } from '../types';
 
-// Almacén en memoria para modo demo
-const pedidosDemo: Pedido[] = [];
+// ------------------------------------------------------------
+// Almacén del modo demo, respaldado en sessionStorage: las pasarelas
+// simuladas redirigen con window.location.href (como las reales) y
+// eso recarga la página; un arreglo solo en memoria se perdería.
+// ------------------------------------------------------------
+const CLAVE_PEDIDOS_DEMO = 'pedidos-demo-lcm';
+
+function cargarPedidosDemo(): Pedido[] {
+  try {
+    const crudo = sessionStorage.getItem(CLAVE_PEDIDOS_DEMO);
+    return crudo ? (JSON.parse(crudo) as Pedido[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+/** Guarda el almacén demo (sin almacenamiento disponible sigue en memoria) */
+function guardarPedidosDemo(): void {
+  try {
+    sessionStorage.setItem(CLAVE_PEDIDOS_DEMO, JSON.stringify(pedidosDemo));
+  } catch {
+    // almacenamiento lleno o bloqueado
+  }
+}
+
+const pedidosDemo: Pedido[] = MODO_DEMO ? cargarPedidosDemo() : [];
 
 /**
  * Genera un id de pedido legible: PED-20260706-XXXXXXXX.
@@ -43,6 +67,7 @@ export async function crearPedido(pedido: Omit<Pedido, 'id'>): Promise<string> {
   const id = generarIdPedido();
   if (MODO_DEMO) {
     pedidosDemo.push({ ...pedido, id });
+    guardarPedidosDemo();
     return id;
   }
   const datos = sinIndefinidos({
@@ -70,6 +95,8 @@ export interface PedidoCreado {
   total: number;
   subtotal: number;
   costoEnvio: number;
+  /** Descuento por cupón aplicado por el servidor */
+  descuento: number;
 }
 
 /**
@@ -83,13 +110,18 @@ export interface PedidoCreado {
  * - MODO_DEMO: en memoria.
  */
 export async function crearPedidoCheckout(pedido: Omit<Pedido, 'id'>): Promise<PedidoCreado> {
-  const resumen = { total: pedido.total, subtotal: pedido.subtotal, costoEnvio: pedido.costoEnvio };
+  const resumen = {
+    total: pedido.total, subtotal: pedido.subtotal, costoEnvio: pedido.costoEnvio, descuento: pedido.descuento ?? 0,
+  };
   if (MODO_DEMO) {
     return { id: await crearPedido(pedido), ...resumen };
   }
   if (!FUNCTIONS_URL) {
     if (pedido.metodoPago !== 'transferencia') {
       throw new Error('Por ahora solo puedes pagar por transferencia bancaria.');
+    }
+    if (pedido.cuponCodigo) {
+      throw new Error('Los códigos de descuento no están disponibles por ahora. Quítalo para continuar.');
     }
     return { id: await crearPedido(pedido), ...resumen };
   }
@@ -110,13 +142,14 @@ export async function crearPedidoCheckout(pedido: Omit<Pedido, 'id'>): Promise<P
         metodoPago: pedido.metodoPago,
         metodoEnvio: pedido.metodoEnvio,
         direccion: pedido.direccion,
+        cuponCodigo: pedido.cuponCodigo,
       }),
     });
   } catch {
     throw new Error('No pudimos conectarnos. Revisa tu conexión a internet e inténtalo de nuevo.');
   }
   const datos = (await res.json().catch(() => ({}))) as {
-    pedidoId?: string; total?: number; subtotal?: number; costoEnvio?: number; error?: string;
+    pedidoId?: string; total?: number; subtotal?: number; costoEnvio?: number; descuento?: number; error?: string;
   };
   if (!res.ok || !datos.pedidoId || typeof datos.total !== 'number') {
     // 409 = stock o producto no disponible: el servidor manda un mensaje claro
@@ -127,6 +160,7 @@ export async function crearPedidoCheckout(pedido: Omit<Pedido, 'id'>): Promise<P
     total: datos.total,
     subtotal: datos.subtotal ?? datos.total,
     costoEnvio: datos.costoEnvio ?? 0,
+    descuento: datos.descuento ?? 0,
   };
 }
 
@@ -168,12 +202,21 @@ export async function actualizarEstadoPedido(id: string, estado: EstadoPedido, r
     if (p) {
       p.estado = estado;
       if (referenciaPago) p.referenciaPago = referenciaPago;
+      if (estado === 'pagado' && !p.fechaPago) p.fechaPago = new Date().toISOString();
+      guardarPedidosDemo();
     }
     return;
   }
+  const ref = doc(db!, 'pedidos', id);
   const datos: Record<string, unknown> = { estado };
   if (referenciaPago) datos.referenciaPago = referenciaPago;
-  await updateDoc(doc(db!, 'pedidos', id), datos);
+  // Al validar un pago (transferencia) queda registrada la fecha: es la
+  // base del reporte mensual de ventas. No se pisa si ya existía.
+  if (estado === 'pagado') {
+    const actual = await getDoc(ref);
+    if (!(actual.data() as Pedido | undefined)?.fechaPago) datos.fechaPago = new Date().toISOString();
+  }
+  await updateDoc(ref, datos);
 }
 
 /**
@@ -195,6 +238,7 @@ export async function descontarStockPedido(id: string): Promise<void> {
       await ajustarStock(item.productoId, Math.max(0, prod.stock - item.cantidad));
     }
     p.stockDescontado = true;
+    guardarPedidosDemo();
     return;
   }
   const refPedido = doc(db!, 'pedidos', id);
@@ -251,6 +295,7 @@ export async function subirComprobante(pedidoId: string, archivo: File): Promise
     if (p) {
       p.comprobanteUrl = `demo://${archivo.name}`;
       p.estado = 'pendiente_validacion';
+      guardarPedidosDemo();
     }
     return `demo://${archivo.name}`;
   }
@@ -272,6 +317,43 @@ export async function obtenerUrlComprobante(ruta: string): Promise<string | null
   if (MODO_DEMO) return null;
   return getDownloadURL(ref(storage!, ruta));
 }
+
+/** Estados que cuentan como venta (pagado o etapas posteriores) */
+export const ESTADOS_VENTA: readonly EstadoPedido[] = ['pagado', 'preparando', 'despachado', 'listo_retiro', 'entregado'];
+
+/**
+ * Pedidos pagados dentro de [desde, hasta) — fechas ISO — para el
+ * reporte mensual de ventas (solo admin). Se usa la fecha de PAGO; los
+ * pedidos sin `fechaPago` (anteriores a este registro) caen por su fecha
+ * de creación.
+ */
+export async function obtenerVentasEnRango(desde: string, hasta: string): Promise<Pedido[]> {
+  const enRango = (f?: string) => !!f && f >= desde && f < hasta;
+  const esVenta = (p: Pedido) => ESTADOS_VENTA.includes(p.estado);
+  if (MODO_DEMO) {
+    return pedidosDemo.filter((p) => esVenta(p) && enRango(p.fechaPago ?? p.fecha));
+  }
+  const pedidos = collection(db!, 'pedidos');
+  const [porPago, porCreacion] = await Promise.all([
+    getDocs(query(pedidos, where('fechaPago', '>=', desde), where('fechaPago', '<', hasta))),
+    getDocs(query(pedidos, where('fecha', '>=', desde), where('fecha', '<', hasta))),
+  ]);
+  const resultado = new Map<string, Pedido>();
+  for (const d of porPago.docs) resultado.set(d.id, { ...(d.data() as Pedido), id: d.id });
+  for (const d of porCreacion.docs) {
+    const p = { ...(d.data() as Pedido), id: d.id };
+    if (!p.fechaPago) resultado.set(d.id, p);
+  }
+  return [...resultado.values()].filter(esVenta);
+}
+
+/** Nombre legible de cada medio de pago */
+export const ETIQUETAS_METODO_PAGO: Record<MetodoPago, string> = {
+  flow: 'Flow (tarjetas)',
+  webpay: 'Webpay',
+  mercadopago: 'Mercado Pago',
+  transferencia: 'Transferencia',
+};
 
 /** Etiquetas legibles de estado de pedido */
 export const ETIQUETAS_ESTADO_PEDIDO: Record<EstadoPedido, string> = {

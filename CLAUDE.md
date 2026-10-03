@@ -89,8 +89,14 @@ Usuarios demo: `cliente@demo.cl` / `empresa@demo.cl` / `admin@demo.cl`, clave `d
   por marca, revisar categorías de la heurística y renombrar ítems cuyo nombre
   es solo un código (`inv-c222`, etc.). `src/data/seed.ts` es archivo generado
   (`npm run importar-inventario`).
-- Deploy a Firebase: el proyecto `la-casa-de-la-motosierra` ya existe y está
-  enlazado (`.firebaserc`). Falta: `serviceAccountKey.json` en la raíz para
-  `npm run importar-inventario -- --push`, y `firebase deploy --only
-  hosting,firestore:rules,storage:rules`. Las functions de pago requieren plan
-  Blaze y sus secretos (rama de pagos).
+- Pagos: Flow/Webpay/Mercado Pago listos en `functions/` (webhooks incluidos; Flow
+  vuelve por `flowRetorno` porque Hosting no acepta POST). Se activan con
+  `VITE_FUNCTIONS_URL` + `VITE_PASARELAS` (p. ej. `flow`). Parámetros no secretos en
+  `functions/.env` (`ORIGENES_PERMITIDOS`, `FLOW_SANDBOX`); secretos con
+  `firebase functions:secrets:set`. Faltan las credenciales reales del cliente.
+- Reporte de ventas (Admin > Ventas) usa `fechaPago`; la base del % de comisión
+  se elige en pantalla (pendiente acordarla con el cliente).
+- Deploy: hosting, reglas e índices publicados en https://la-casa-de-la-motosierra.web.app
+  (Firestore y Storage en southamerica-west1; catálogo subido con ADC). Falta activar
+  Authentication (correo/contraseña) en la consola, plan Blaze y `firebase deploy
+  --only functions` para el pago en línea.

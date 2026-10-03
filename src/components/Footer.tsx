@@ -6,6 +6,13 @@ import {
   CORREO_VENTAS, DIRECCION_TIENDA, ENLACE_LLAMAR, HORARIO_CORTO, TELEFONO_VISIBLE, enlaceWhatsApp,
 } from '../config/tienda';
 import { IconoPin, IconoReloj, IconoTelefono, IconoWhatsApp } from './Iconos';
+import { PAGO_EN_LINEA, PASARELAS_ACTIVAS, type PasarelaEnLinea } from '../config/pagos';
+
+const NOMBRE_PASARELA: Record<PasarelaEnLinea, string> = {
+  flow: 'Tarjetas (Flow)',
+  webpay: 'Webpay',
+  mercadopago: 'Mercado Pago',
+};
 
 const ENLACES_INFO: [string, string][] = [
   ['/seguimiento', '¿Dónde está mi pedido?'],
@@ -83,12 +90,16 @@ export default function Footer() {
         {/* Pagos + redes */}
         <div>
           <h2 className="mb-4 font-display text-xl font-semibold uppercase tracking-wide">Paga como quieras</h2>
+          {/* Solo los medios activos hoy (config/pagos) */}
           <ul className="flex flex-wrap gap-2 text-sm font-bold">
-            <li className="rounded-md bg-white px-3 py-1.5 text-[#6E2C8B]">Webpay</li>
-            <li className="rounded-md bg-white px-3 py-1.5 text-[#00699E]">Mercado Pago</li>
+            {PASARELAS_ACTIVAS.map((p) => (
+              <li key={p} className="rounded-md bg-white px-3 py-1.5 text-grafito">{NOMBRE_PASARELA[p]}</li>
+            ))}
             <li className="rounded-md bg-white px-3 py-1.5 text-grafito">Transferencia</li>
           </ul>
-          <p className="mt-3 text-base text-white/75">Débito, crédito y prepago.</p>
+          <p className="mt-3 text-base text-white/75">
+            {PAGO_EN_LINEA ? 'Débito, crédito y prepago.' : 'Pronto también con tarjeta.'}
+          </p>
           <h2 className="mb-3 mt-7 font-display text-xl font-semibold uppercase tracking-wide">Síguenos</h2>
           <div className="flex gap-3 text-base">
             <a href="https://instagram.com" target="_blank" rel="noreferrer" className="btn min-h-[44px] bg-white/10 px-4 text-white hover:bg-white/20">Instagram</a>

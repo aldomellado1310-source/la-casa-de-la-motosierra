@@ -9,11 +9,15 @@ dist/
 # Entorno y credenciales — NUNCA subir al repositorio
 .env
 .env.local
+# Parámetros NO secretos de las Cloud Functions: sí se versionan
+!functions/.env
 serviceAccountKey.json
+functions/.secret.local
 
 # Firebase
 .firebase/
 firebase-debug.log
+firestore-debug.log
 
 # Configuración local de Claude Code
 .claude/

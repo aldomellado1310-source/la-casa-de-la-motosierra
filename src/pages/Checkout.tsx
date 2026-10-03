@@ -1,7 +1,7 @@
 ﻿// ============================================================
 // Checkout: resumen, dirección, método de entrega con costo
-// visible ANTES de pagar, y medios de pago (Webpay / Mercado
-// Pago / transferencia con comprobante).
+// visible ANTES de pagar, código de descuento y medios de pago
+// (Flow / Webpay / Mercado Pago / transferencia con comprobante).
 // ============================================================
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -9,13 +9,16 @@ import { useAuth } from '../stores/useAuth';
 import { useCarrito } from '../stores/useCarrito';
 import { crearPedidoCheckout, subirComprobante } from '../services/pedidos';
 import { invalidarCacheProductos, obtenerProducto } from '../services/productos';
-import { DATOS_TRANSFERENCIA, iniciarPagoMercadoPago, iniciarPagoWebpay, redirigirAWebpay } from '../services/pagos';
+import { DATOS_TRANSFERENCIA, irAPagar as irAPagarPedido } from '../services/pagos';
 import { REGIONES_CHILE, calcularOpcionesEnvio } from '../services/envios';
+import { obtenerCuponPorCodigo } from '../services/cupones';
 import { FUNCTIONS_URL, MODO_DEMO } from '../config/firebase';
+import { PAGO_EN_LINEA, PASARELAS_ACTIVAS } from '../config/pagos';
 import { formatoCLP } from '../utils/precio';
+import { calcularDescuento, cuponVigente } from '../utils/cupones';
 import { useSeo } from '../utils/seo';
 import { IconoCandado } from '../components/Iconos';
-import type { Direccion, MetodoEnvio, MetodoPago, Pedido } from '../types';
+import type { Cupon, Direccion, MetodoEnvio, MetodoPago, Pedido } from '../types';
 
 /** Título de paso con número grande en círculo */
 function TituloPaso({ n, children }: { n: number; children: React.ReactNode }) {
@@ -30,18 +33,20 @@ function TituloPaso({ n, children }: { n: number; children: React.ReactNode }) {
 }
 
 /**
- * Pago en línea (Webpay / Mercado Pago) disponible solo si hay Cloud
- * Functions (el total lo calcula el servidor) o en modo demo. Sin
- * functions queda solo transferencia.
+ * Medios de pago. Los en línea dependen de config/pagos (Cloud Functions
+ * publicadas + VITE_PASARELAS); sin functions queda solo transferencia.
  */
-const PAGO_EN_LINEA = MODO_DEMO || Boolean(FUNCTIONS_URL);
-
 const MEDIOS_PAGO: { id: MetodoPago; nombre: string; detalle: string }[] = [
+  { id: 'flow', nombre: 'Tarjeta de débito o crédito', detalle: 'Redcompra, Visa, Mastercard o prepago. Pago seguro con Flow.' },
   { id: 'webpay', nombre: 'Tarjeta (Webpay)', detalle: 'Débito, crédito o prepago. Pago seguro de Transbank.' },
   { id: 'mercadopago', nombre: 'Mercado Pago', detalle: 'Tarjetas con cuotas o saldo de Mercado Pago.' },
   { id: 'transferencia', nombre: 'Transferencia bancaria', detalle: 'Te damos los datos de la cuenta. Envías el comprobante y despachamos.' },
 ];
-const MEDIOS_DISPONIBLES = PAGO_EN_LINEA ? MEDIOS_PAGO : MEDIOS_PAGO.filter((m) => m.id === 'transferencia');
+const MEDIOS_DISPONIBLES = MEDIOS_PAGO.filter(
+  (m) => m.id === 'transferencia' || (PASARELAS_ACTIVAS as readonly MetodoPago[]).includes(m.id),
+);
+/** Los códigos de descuento los valida el servidor: requieren functions (o demo) */
+const CUPONES_DISPONIBLES = PAGO_EN_LINEA;
 
 /** Pedido creado cuyo total (calculado por el servidor) difiere del mostrado */
 interface CambioTotal {
@@ -54,7 +59,7 @@ interface CambioTotal {
 export default function Checkout() {
   useSeo({
     titulo: 'Finalizar compra',
-    descripcion: 'Método de entrega con costo visible antes de pagar y pago con Webpay, Mercado Pago o transferencia.',
+    descripcion: 'Método de entrega con costo visible antes de pagar y pago con tarjeta o transferencia.',
   });
   const navigate = useNavigate();
   const { usuario } = useAuth();
@@ -65,7 +70,12 @@ export default function Checkout() {
   const [direccionId, setDireccionId] = useState('');
   const [dirNueva, setDirNueva] = useState({ calle: '', numero: '', comuna: '' });
   const [metodoEnvio, setMetodoEnvio] = useState<MetodoEnvio>('retiro_tienda');
-  const [metodoPago, setMetodoPago] = useState<MetodoPago>(PAGO_EN_LINEA ? 'webpay' : 'transferencia');
+  const [metodoPago, setMetodoPago] = useState<MetodoPago>(PASARELAS_ACTIVAS[0] ?? 'transferencia');
+  // Código de descuento (vista previa; el servidor decide el descuento real)
+  const [codigoCupon, setCodigoCupon] = useState('');
+  const [cupon, setCupon] = useState<Cupon | null>(null);
+  const [mensajeCupon, setMensajeCupon] = useState('');
+  const [validandoCupon, setValidandoCupon] = useState(false);
   const [comprobante, setComprobante] = useState<File | null>(null);
   const [procesando, setProcesando] = useState(false);
   const [error, setError] = useState('');
@@ -81,7 +91,8 @@ export default function Checkout() {
   const opcionesEnvio = useMemo(() => calcularOpcionesEnvio(region, pesoEstimado), [region, pesoEstimado]);
   const envioElegido = opcionesEnvio.find((o) => o.metodo === metodoEnvio) ?? opcionesEnvio[0];
   const costoEnvio = envioElegido.costo;
-  const totalFinal = total() + costoEnvio;
+  const descuento = cupon ? calcularDescuento(cupon, total()) : 0;
+  const totalFinal = total() - descuento + costoEnvio;
 
   if (items.length === 0 && !pedidoTransferencia && !cambioTotal) {
     return (
@@ -105,6 +116,25 @@ export default function Checkout() {
       comuna: dirNueva.comuna,
       region,
     };
+  };
+
+  const aplicarCupon = async () => {
+    setMensajeCupon('');
+    if (!codigoCupon.trim()) return;
+    setValidandoCupon(true);
+    try {
+      const encontrado = await obtenerCuponPorCodigo(codigoCupon);
+      if (!encontrado) setMensajeCupon('Ese código no existe. Revisa que esté bien escrito.');
+      else if (!cuponVigente(encontrado)) setMensajeCupon('Ese código ya no está vigente.');
+      else {
+        setCupon(encontrado);
+        setCodigoCupon('');
+      }
+    } catch {
+      setMensajeCupon('No pudimos revisar el código. Inténtalo otra vez.');
+    } finally {
+      setValidandoCupon(false);
+    }
   };
 
   const validar = (): string => {
@@ -145,6 +175,8 @@ export default function Checkout() {
         items,
         subtotal: total(),
         costoEnvio,
+        descuento: descuento || undefined,
+        cuponCodigo: cupon?.codigo,
         total: totalFinal,
         metodoPago,
         metodoEnvio,
@@ -154,7 +186,7 @@ export default function Checkout() {
       };
       const creado = await crearPedidoCheckout(base);
 
-      if (metodoPago === 'webpay' || metodoPago === 'mercadopago') {
+      if (metodoPago !== 'transferencia') {
         if (creado.total !== totalFinal) {
           // Cambió un precio desde que se armó el carrito: mostrar el total
           // real y pedir confirmación antes de mandar a pagar
@@ -174,17 +206,10 @@ export default function Checkout() {
     }
   };
 
-  /** Inicia el pago con la pasarela y redirige */
+  /** Inicia el pago con la pasarela y redirige (el carrito se vacía al salir) */
   const irAPagar = async (pedidoId: string, metodo: CambioTotal['metodo']) => {
-    if (metodo === 'webpay') {
-      const resp = await iniciarPagoWebpay(pedidoId);
-      vaciar();
-      redirigirAWebpay(resp);
-      return;
-    }
-    const url = await iniciarPagoMercadoPago(pedidoId);
+    await irAPagarPedido(pedidoId, metodo);
     vaciar();
-    window.location.href = url;
   };
 
   /** Confirmación del total nuevo → pagar */
@@ -434,8 +459,47 @@ export default function Checkout() {
                 </li>
               ))}
             </ul>
+            {CUPONES_DISPONIBLES && (
+              <div className="mt-3 border-t border-borde pt-3">
+                {cupon ? (
+                  <div className="flex items-center justify-between gap-2 rounded-lg bg-verde-badge p-3">
+                    <span className="font-semibold text-verde-oscuro">Código {cupon.codigo} aplicado</span>
+                    <button type="button" onClick={() => setCupon(null)} className="enlace min-h-12 px-2">Quitar</button>
+                  </div>
+                ) : (
+                  <>
+                    <label className="etiqueta" htmlFor="chk-cupon">¿Tienes un código de descuento?</label>
+                    <div className="flex gap-2">
+                      <input
+                        id="chk-cupon"
+                        value={codigoCupon}
+                        maxLength={30}
+                        autoCapitalize="characters"
+                        onChange={(e) => setCodigoCupon(e.target.value.toUpperCase())}
+                        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void aplicarCupon(); } }}
+                        className="campo min-w-0 flex-1 font-mono uppercase"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => void aplicarCupon()}
+                        disabled={validandoCupon || !codigoCupon.trim()}
+                        className="btn btn-secundario shrink-0"
+                      >
+                        {validandoCupon ? 'Revisando…' : 'Aplicar'}
+                      </button>
+                    </div>
+                    {mensajeCupon && <p role="alert" className="mt-2 text-base font-semibold text-oferta">{mensajeCupon}</p>}
+                  </>
+                )}
+              </div>
+            )}
             <div className="mt-3 space-y-2 border-t border-borde pt-3 text-base">
               <div className="flex justify-between"><span>Subtotal</span><span>{formatoCLP(total())}</span></div>
+              {descuento > 0 && (
+                <div className="flex justify-between font-semibold text-verde">
+                  <span>Descuento ({cupon?.codigo})</span><span>−{formatoCLP(descuento)}</span>
+                </div>
+              )}
               <div className="flex justify-between gap-3">
                 <span>Envío ({envioElegido.nombre})</span>
                 <span className={costoEnvio === 0 ? 'font-semibold text-verde' : ''}>

@@ -1,7 +1,7 @@
 // Admin > Pedidos: listado con detalle y cambio de estado
 import { useEffect, useState } from 'react';
 import {
-  ETIQUETAS_ESTADO_PEDIDO, actualizarEstadoPedido, descontarStockPedido,
+  ETIQUETAS_ESTADO_PEDIDO, ETIQUETAS_METODO_PAGO, actualizarEstadoPedido, descontarStockPedido,
   obtenerTodosLosPedidos, obtenerUrlComprobante,
 } from '../../services/pedidos';
 import { formatoCLP } from '../../utils/precio';
@@ -114,7 +114,9 @@ export default function AdminPedidos() {
                   {p.direccion && (
                     <p>Dirección: {p.direccion.calle} {p.direccion.numero}, {p.direccion.comuna} ({p.direccion.region})</p>
                   )}
-                  <p>Pago: <strong>{p.metodoPago}</strong>{p.referenciaPago ? ` · ref ${p.referenciaPago}` : ''}</p>
+                  <p>Pago: <strong>{ETIQUETAS_METODO_PAGO[p.metodoPago]}</strong>{p.referenciaPago ? ` · ref ${p.referenciaPago}` : ''}</p>
+                  {p.fechaPago && <p>Pagado el {new Date(p.fechaPago).toLocaleString('es-CL')}</p>}
+                  {p.cuponCodigo && <p>Cupón <strong>{p.cuponCodigo}</strong>: −{formatoCLP(p.descuento ?? 0)}</p>}
                   {p.comprobanteUrl && <EnlaceComprobante pedidoId={p.id} ruta={p.comprobanteUrl} />}
                   {!MODO_DEMO && p.origen !== 'servidor' && (
                     <p className="mt-2 rounded-lg bg-ambar-fondo p-2 font-semibold text-ambar" role="note">

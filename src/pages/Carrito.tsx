@@ -5,6 +5,7 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useCarrito } from '../stores/useCarrito';
 import { formatoCLP } from '../utils/precio';
+import { envioDesde } from '../services/envios';
 import { useSeo } from '../utils/seo';
 import FotoProducto from '../components/FotoProducto';
 import { IconoBasura, IconoCarrito, IconoDocumento, IconoFlecha, IconoPin } from '../components/Iconos';
@@ -108,7 +109,10 @@ export default function Carrito() {
             </div>
             <p className="mt-3 flex items-start gap-2 text-base text-gris-600">
               <IconoPin className="mt-0.5 h-5 w-5 shrink-0 text-verde" />
-              En el siguiente paso eliges retiro gratis en tienda o envío, y ves su costo antes de pagar.
+              <span>
+                Retiro <strong>gratis</strong> en Puerto Aysén, o envío a todo Chile desde{' '}
+                <strong>{formatoCLP(envioDesde(unidades()))}</strong>. El costo exacto lo ves en el siguiente paso, antes de pagar.
+              </span>
             </p>
             <button onClick={() => navigate('/checkout')} className="btn-primario btn-grande mt-5 hidden w-full md:flex">
               Continuar con la compra <IconoFlecha className="h-5 w-5" />

@@ -1,10 +1,11 @@
 // ============================================================
-// Servicio de pagos: orquesta Webpay Plus, Mercado Pago y
+// Servicio de pagos: orquesta Webpay Plus, Mercado Pago, Flow y
 // transferencia bancaria. Los flujos con pasarela llaman a
 // las Cloud Functions (functions/src/index.ts).
 // ============================================================
 import { FUNCTIONS_URL, MODO_DEMO } from '../config/firebase';
 import { actualizarEstadoPedido, descontarStockPedido } from './pedidos';
+import type { MetodoPago } from '../types';
 
 /** Datos bancarios para pago por transferencia */
 export const DATOS_TRANSFERENCIA = {
@@ -136,4 +137,78 @@ export async function confirmarPagoMercadoPago(pedidoId: string, paymentId: stri
   if (!res.ok) throw new Error('No se pudo verificar el pago con Mercado Pago');
   const datos = (await res.json()) as { aprobado: boolean };
   return datos.aprobado;
+}
+
+interface RespuestaFlow {
+  url: string;   // URL del formulario de pago de Flow
+  token: string; // token de la orden de pago
+}
+
+/**
+ * Crea una orden de pago en Flow (tarjetas de débito, crédito y
+ * prepago). El monto y las URLs de retorno/confirmación los arma la
+ * función desde el pedido en Firestore.
+ */
+export async function iniciarPagoFlow(pedidoId: string): Promise<RespuestaFlow> {
+  if (MODO_DEMO) {
+    return { url: `${window.location.origin}/pago/retorno`, token: `demo-${pedidoId}` };
+  }
+  if (!FUNCTIONS_URL) throw new Error('El pago en línea no está disponible por ahora. Elige transferencia bancaria.');
+  const res = await fetch(`${FUNCTIONS_URL}/flowCrear`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ pedidoId }),
+  });
+  if (!res.ok) throw new Error(await mensajeError(res, 'No se pudo iniciar el pago con Flow. Inténtalo de nuevo.'));
+  return res.json() as Promise<RespuestaFlow>;
+}
+
+/** Redirige al formulario de pago de Flow (?token=) */
+export function redirigirAFlow(respuesta: RespuestaFlow): void {
+  if (MODO_DEMO && respuesta.token.startsWith('demo-')) {
+    window.location.href = `${respuesta.url}?flow=1&token=${respuesta.token}`;
+    return;
+  }
+  window.location.href = `${respuesta.url}?token=${encodeURIComponent(respuesta.token)}`;
+}
+
+/**
+ * Confirma un pago de Flow al volver del formulario: el servidor
+ * consulta la API de Flow (getStatus). El retorno del navegador no es
+ * fuente de verdad. Flow además avisa por webhook al servidor.
+ */
+export async function confirmarPagoFlow(token: string): Promise<ResultadoCommitWebpay> {
+  if (MODO_DEMO && token.startsWith('demo-')) {
+    const pedidoId = token.replace('demo-', '');
+    await actualizarEstadoPedido(pedidoId, 'pagado', 'FLOW-DEMO');
+    await descontarStockPedido(pedidoId);
+    return { aprobado: true, pedidoId, codigoAutorizacion: 'FLOW-DEMO' };
+  }
+  const res = await fetch(`${FUNCTIONS_URL}/flowConfirmar`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token }),
+  });
+  if (!res.ok) throw new Error('No se pudo confirmar el pago con Flow');
+  return res.json() as Promise<ResultadoCommitWebpay>;
+}
+
+/**
+ * Lleva al cliente a pagar un pedido YA creado con su pasarela (primer
+ * intento o reintento tras un rechazo), sin crear un pedido nuevo.
+ */
+export async function irAPagar(pedidoId: string, metodo: MetodoPago): Promise<void> {
+  if (metodo === 'webpay') {
+    redirigirAWebpay(await iniciarPagoWebpay(pedidoId));
+    return;
+  }
+  if (metodo === 'mercadopago') {
+    window.location.href = await iniciarPagoMercadoPago(pedidoId);
+    return;
+  }
+  if (metodo === 'flow') {
+    redirigirAFlow(await iniciarPagoFlow(pedidoId));
+    return;
+  }
+  throw new Error('Este pedido se paga por transferencia bancaria.');
 }

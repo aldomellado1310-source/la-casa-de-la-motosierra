@@ -45,6 +45,16 @@ const RECARGO_KG = 1500;
 const KG_INCLUIDOS = 3;
 
 /**
+ * "Desde" para la ficha y el carrito, antes de conocer la región: el
+ * despacho más barato (zona local, Aysén) para ese peso. El costo exacto
+ * por región se ve en el checkout.
+ */
+export function envioDesde(pesoKg = 1): number {
+  const extra = Math.max(0, Math.ceil(pesoKg - KG_INCLUIDOS)) * RECARGO_KG;
+  return Math.min(...Object.values(TARIFAS).map((t) => t.local)) + extra;
+}
+
+/**
  * Calcula las opciones de envío para una región y peso estimado.
  * El costo se muestra ANTES de pagar (mejora vs. "envío por pagar").
  */

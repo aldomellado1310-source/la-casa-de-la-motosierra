@@ -109,7 +109,7 @@ export interface ItemCarrito {
   preciosPorVolumen: TramoPrecio[];
 }
 
-export type MetodoPago = 'webpay' | 'mercadopago' | 'transferencia';
+export type MetodoPago = 'webpay' | 'mercadopago' | 'flow' | 'transferencia';
 
 export type MetodoEnvio = 'retiro_tienda' | 'starken' | 'chilexpress' | 'bluexpress';
 
@@ -132,6 +132,10 @@ export interface Pedido {
   items: ItemCarrito[];
   subtotal: number;
   costoEnvio: number;
+  /** Descuento por cupón en CLP, ya restado del total (lo fija el servidor) */
+  descuento?: number;
+  /** Código del cupón aplicado, si hubo */
+  cuponCodigo?: string;
   total: number;
   metodoPago: MetodoPago;
   metodoEnvio: MetodoEnvio;
@@ -150,6 +154,20 @@ export interface Pedido {
   origen?: 'servidor';
   /** Tokens/preferencias de cada intento de pago con pasarela */
   intentosPago?: string[];
+  /** ISO: cuándo se confirmó el pago (pasarela o validación del admin). Base del reporte de ventas */
+  fechaPago?: string;
+}
+
+/** Cupón de descuento (colección `cupones`, id = código en mayúsculas) */
+export interface Cupon {
+  codigo: string;
+  tipo: 'porcentaje' | 'monto';
+  /** % (1-100) si tipo=porcentaje, o monto CLP si tipo=monto */
+  valor: number;
+  activo: boolean;
+  descripcion?: string;
+  /** Fecha ISO de expiración; sin tope si no se define */
+  fechaExpiracion?: string;
 }
 
 export type EstadoCotizacion = 'enviada' | 'aprobada' | 'convertida' | 'vencida';

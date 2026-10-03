@@ -4,24 +4,32 @@
 // - crearPedido: crea el pedido con precios y total calculados en el
 //   SERVIDOR (el navegador solo envía productoId + cantidad)
 // - webpayCrear / webpayConfirmar: flujo Webpay Plus (Transbank)
-// - mercadoPagoCrear / mercadoPagoConfirmar: Checkout Pro
+// - mercadoPagoCrear / mercadoPagoConfirmar / mercadoPagoWebhook: Checkout Pro
+// - flowCrear / flowConfirmar / flowWebhook / flowRetorno: Flow (flow.cl)
 // - generarPdfCotizacion: PDF en servidor, guardado en Storage
 //
 // CREDENCIALES (secretos de Functions):
 //   WEBPAY_COMMERCE_CODE  → código de comercio Transbank (producción)
 //   WEBPAY_API_KEY        → API key secreta Transbank (producción)
 //   MP_ACCESS_TOKEN       → access token de Mercado Pago
-// Sin credenciales se usa el ambiente de INTEGRACIÓN de Transbank
+//   MP_WEBHOOK_SECRET     → clave secreta del webhook de Mercado Pago
+//   FLOW_API_KEY          → API key de Flow
+//   FLOW_SECRET_KEY       → secret key de Flow (firma de cada llamada)
+// Sin credenciales Webpay usa el ambiente de INTEGRACIÓN de Transbank
 // (tarjetas de prueba) para poder probar el flujo completo.
 //
-// PARÁMETROS (no secretos):
+// PARÁMETROS (no secretos, en functions/.env):
 //   ORIGENES_PERMITIDOS   → orígenes del frontend aceptados para CORS
 //                           y para armar las URLs de retorno de pago
+//   FLOW_SANDBOX          → 'true' usa sandbox.flow.cl (pruebas)
 //
 // Configurar con:
 //   firebase functions:secrets:set WEBPAY_COMMERCE_CODE
 //   firebase functions:secrets:set WEBPAY_API_KEY
 //   firebase functions:secrets:set MP_ACCESS_TOKEN
+//   firebase functions:secrets:set MP_WEBHOOK_SECRET
+//   firebase functions:secrets:set FLOW_API_KEY
+//   firebase functions:secrets:set FLOW_SECRET_KEY
 // ============================================================
 import { onRequest } from 'firebase-functions/v2/https';
 import { defineSecret, defineString } from 'firebase-functions/params';
@@ -40,6 +48,9 @@ import {
   type MetodoPago, type ProductoServidor, type TramoPrecio,
 } from './calculoPedido';
 import { origenPermitido, origenRetorno } from './origenes';
+import { evaluarAprobacionFlow, llamarFlow } from './flow';
+import { firmaMercadoPagoValida, leerIdPagoNotificacion } from './mercadoPago';
+import type { Cupon } from './cupones';
 
 initializeApp();
 const db = getFirestore();
@@ -48,6 +59,16 @@ const db = getFirestore();
 const WEBPAY_COMMERCE_CODE = defineSecret('WEBPAY_COMMERCE_CODE');
 const WEBPAY_API_KEY = defineSecret('WEBPAY_API_KEY');
 const MP_ACCESS_TOKEN = defineSecret('MP_ACCESS_TOKEN');
+const MP_WEBHOOK_SECRET = defineSecret('MP_WEBHOOK_SECRET');
+const FLOW_API_KEY = defineSecret('FLOW_API_KEY');
+const FLOW_SECRET_KEY = defineSecret('FLOW_SECRET_KEY');
+
+// Flow en sandbox hasta que el cliente tenga su cuenta de producción.
+// flow.ts lee process.env.FLOW_SANDBOX (los parámetros quedan como variables de entorno).
+defineString('FLOW_SANDBOX', {
+  default: 'true',
+  description: "'true' = sandbox.flow.cl (pruebas); 'false' = producción",
+});
 
 // --- Lista blanca de orígenes del frontend (CORS + URLs de retorno) ---
 // String separado por comas (en functions/.env o al desplegar):
@@ -131,6 +152,12 @@ function urlRetornoPago(req: SolicitudHttp): string {
   return `${origenRetorno(req.get('origin'), origenesPermitidos())}/pago/retorno`;
 }
 
+/** URL pública de otra function de este proyecto (webhooks y retornos) */
+function urlFuncion(nombre: string): string {
+  const proyecto = process.env.GCLOUD_PROJECT ?? process.env.GCP_PROJECT ?? 'la-casa-de-la-motosierra';
+  return `https://${OPCIONES_BASE.region}-${proyecto}.cloudfunctions.net/${nombre}`;
+}
+
 // ------------------------------------------------------------
 // Lectura de pedidos
 // ------------------------------------------------------------
@@ -143,6 +170,7 @@ interface PedidoGuardado {
   origen?: string;
   referenciaPago?: string;
   stockDescontado?: boolean;
+  emailCliente?: string;
 }
 
 /**
@@ -174,7 +202,8 @@ async function marcarPagado(pedidoRef: DocumentReference, referenciaPago: string
     if (!snap.exists) return;
     const pedido = snap.data() as PedidoGuardado;
     if (pedido.estado !== 'pendiente_pago') return;
-    tx.update(pedidoRef, { estado: 'pagado', referenciaPago });
+    // fechaPago es la base del reporte mensual de ventas
+    tx.update(pedidoRef, { estado: 'pagado', referenciaPago, fechaPago: new Date().toISOString() });
   });
 }
 
@@ -274,7 +303,18 @@ export const crearPedido = onRequest(
       for (const s of snaps) {
         if (s.exists) productos.set(s.id, aProductoServidor(s.id, s.data() as Record<string, unknown>));
       }
-      const calculo = calcularPedido(productos, solicitud.items, solicitud.metodoEnvio, solicitud.direccion?.region);
+      // Cupón: SIEMPRE desde Firestore (el navegador solo envía el código)
+      let cupon: Cupon | undefined;
+      if (solicitud.cuponCodigo) {
+        const snapCupon = await db.collection('cupones').doc(solicitud.cuponCodigo).get();
+        if (!snapCupon.exists) {
+          res.status(409).json({ error: `El código "${solicitud.cuponCodigo}" no existe. Revísalo o quítalo.`, codigo: 'cupon' });
+          return;
+        }
+        cupon = { ...(snapCupon.data() as Cupon), codigo: snapCupon.id };
+      }
+
+      const calculo = calcularPedido(productos, solicitud.items, solicitud.metodoEnvio, solicitud.direccion?.region, cupon);
       if (!calculo.ok) {
         res.status(409).json({ error: calculo.mensaje, codigo: calculo.codigo, productoId: calculo.productoId });
         return;
@@ -295,13 +335,20 @@ export const crearPedido = onRequest(
         origen: 'servidor',
       };
       if (solicitud.direccion) pedido.direccion = solicitud.direccion;
+      if (calculo.descuento > 0 && calculo.cuponCodigo) {
+        pedido.descuento = calculo.descuento;
+        pedido.cuponCodigo = calculo.cuponCodigo;
+      }
 
       // create() falla si el id ya existe: reintentamos con otro sufijo
       for (let intento = 0; intento < 3; intento++) {
         const pedidoId = generarIdPedido();
         try {
           await db.collection('pedidos').doc(pedidoId).create(pedido);
-          res.json({ pedidoId, total: calculo.total, subtotal: calculo.subtotal, costoEnvio: calculo.costoEnvio });
+          res.json({
+            pedidoId, total: calculo.total, subtotal: calculo.subtotal,
+            costoEnvio: calculo.costoEnvio, descuento: calculo.descuento,
+          });
           return;
         } catch (e) {
           if ((e as { code?: number }).code !== 6) throw e; // 6 = ALREADY_EXISTS
@@ -460,6 +507,8 @@ export const mercadoPagoCrear = onRequest(
             pending: `${backUrl}?status=pending&pedido=${pedidoId}`,
           },
           auto_return: 'approved',
+          // Webhook: confirma el pago aunque el cliente cierre el navegador
+          notification_url: urlFuncion('mercadoPagoWebhook'),
         },
       });
       if (preferencia.id) {
@@ -473,10 +522,49 @@ export const mercadoPagoCrear = onRequest(
   },
 );
 
+/**
+ * Verifica un pago de Mercado Pago contra su API y, si corresponde,
+ * marca el pedido como pagado (idempotente). Lo usan el retorno del
+ * navegador (mercadoPagoConfirmar) y el webhook. `pedidoEsperado`
+ * (retorno) obliga a que el pago sea de ese pedido.
+ */
+async function verificarPagoMercadoPago(
+  paymentId: string,
+  accessToken: string,
+  pedidoEsperado?: string,
+): Promise<{ aprobado: boolean; pedidoId: string | null; motivo?: string }> {
+  const cliente = new MercadoPagoConfig({ accessToken });
+  const pago = await new Payment(cliente).get({ id: paymentId });
+  const pedidoId = typeof pago.external_reference === 'string' ? pago.external_reference : '';
+  if (!REGEX_ID_PEDIDO.test(pedidoId)) return { aprobado: false, pedidoId: null, motivo: 'sin pedido' };
+  if (pedidoEsperado && pedidoEsperado !== pedidoId) return { aprobado: false, pedidoId: pedidoEsperado, motivo: 'otro pedido' };
+
+  const pedidoRef = db.collection('pedidos').doc(pedidoId);
+  const snap = await pedidoRef.get();
+  if (!snap.exists) return { aprobado: false, pedidoId, motivo: 'pedido inexistente' };
+  const pedido = snap.data() as PedidoGuardado;
+  // Idempotencia: ya confirmado antes (por el retorno o el webhook)
+  if (ESTADOS_PAGADOS.includes(pedido.estado)) return { aprobado: true, pedidoId };
+  // Solo pedidos con total calculado por el servidor
+  if (pedido.origen !== 'servidor' || pedido.metodoPago !== 'mercadopago') {
+    return { aprobado: false, pedidoId, motivo: 'pedido no pagable con MP' };
+  }
+  const aprobado = pago.status === 'approved'
+    && pago.currency_id === 'CLP'
+    && Math.round(pago.transaction_amount ?? 0) === Math.round(pedido.total);
+  if (aprobado) {
+    await marcarPagado(pedidoRef, paymentId);
+    await descontarStockPedido(pedidoRef);
+  } else if (pago.status === 'approved') {
+    console.warn('Mercado Pago: pago aprobado con monto/moneda distintos', pedidoId, pago.transaction_amount, pago.currency_id);
+  }
+  return { aprobado, pedidoId };
+}
+
 // ------------------------------------------------------------
-// Mercado Pago: confirmar pago verificándolo con la API de MP
-// (el retorno del navegador NO es confiable: cualquiera puede
-// forjar la URL con status=approved). Idempotente.
+// Mercado Pago: confirmar pago al volver del Checkout Pro.
+// El retorno del navegador NO es confiable (cualquiera puede forjar
+// la URL con status=approved): se verifica contra la API.
 // ------------------------------------------------------------
 export const mercadoPagoConfirmar = onRequest(
   { ...OPCIONES_BASE, secrets: [MP_ACCESS_TOKEN] },
@@ -495,40 +583,208 @@ export const mercadoPagoConfirmar = onRequest(
         res.status(400).json({ error: 'Faltan parámetros: pedidoId, paymentId' });
         return;
       }
-      const pedidoRef = db.collection('pedidos').doc(pedidoId);
-      const pedidoSnap = await pedidoRef.get();
-      if (!pedidoSnap.exists) {
-        res.status(404).json({ error: 'Pedido no encontrado' });
+      const resultado = await verificarPagoMercadoPago(String(paymentId), accessToken, pedidoId);
+      if (resultado.motivo === 'pedido inexistente') {
+        res.status(404).json({ aprobado: false, error: 'Pedido no encontrado' });
         return;
       }
-      const pedido = pedidoSnap.data() as PedidoGuardado;
-      // Idempotencia: ya confirmado antes
-      if (ESTADOS_PAGADOS.includes(pedido.estado)) {
-        res.json({ aprobado: true, pedidoId });
-        return;
-      }
-      // Solo pedidos con total calculado por el servidor
-      if (pedido.origen !== 'servidor' || pedido.metodoPago !== 'mercadopago') {
-        res.status(409).json({ aprobado: false, error: 'Este pedido no se puede pagar con Mercado Pago' });
-        return;
-      }
-
-      const cliente = new MercadoPagoConfig({ accessToken });
-      const pago = await new Payment(cliente).get({ id: String(paymentId) });
-      const aprobado = pago.status === 'approved'
-        && pago.external_reference === pedidoId
-        && pago.currency_id === 'CLP'
-        && Math.round(pago.transaction_amount ?? 0) === Math.round(pedido.total);
-
-      if (aprobado) {
-        await marcarPagado(pedidoRef, String(paymentId));
-        await descontarStockPedido(pedidoRef);
-      }
-      res.json({ aprobado, pedidoId });
+      res.json({ aprobado: resultado.aprobado, pedidoId });
     } catch (e) {
       console.error('mercadoPagoConfirmar:', e);
       res.status(500).json({ error: 'No se pudo verificar el pago con Mercado Pago' });
     }
+  },
+);
+
+// ------------------------------------------------------------
+// Mercado Pago: webhook servidor a servidor (notification_url).
+// Confirma el pago aunque el cliente cierre el navegador antes de
+// volver. Verifica la firma x-signature si MP_WEBHOOK_SECRET está
+// configurado; el estado del pago siempre se lee de la API de MP.
+// ------------------------------------------------------------
+export const mercadoPagoWebhook = onRequest(
+  { ...OPCIONES_BASE, secrets: [MP_ACCESS_TOKEN, MP_WEBHOOK_SECRET] },
+  async (req, res) => {
+    try {
+      if (req.method !== 'POST') { res.status(405).send('Método no permitido'); return; }
+      const paymentId = leerIdPagoNotificacion(req.query as Record<string, unknown>, req.body);
+      // Notificaciones que no son de pagos: se acusan para que MP no reintente
+      if (!paymentId) { res.status(200).send('OK'); return; }
+
+      const secreto = process.env.MP_WEBHOOK_SECRET;
+      if (secreto) {
+        const dataId = typeof req.query['data.id'] === 'string' ? req.query['data.id'] : paymentId;
+        if (!firmaMercadoPagoValida(req.get('x-signature'), req.get('x-request-id'), dataId, secreto)) {
+          console.warn('mercadoPagoWebhook: firma inválida', paymentId);
+          res.status(401).send('Firma inválida');
+          return;
+        }
+      } else {
+        console.warn('mercadoPagoWebhook: MP_WEBHOOK_SECRET no configurado; se verifica solo contra la API');
+      }
+
+      const accessToken = process.env.MP_ACCESS_TOKEN;
+      if (!accessToken) { res.status(500).send('Sin configurar'); return; }
+      const resultado = await verificarPagoMercadoPago(paymentId, accessToken);
+      console.info('mercadoPagoWebhook:', paymentId, resultado.pedidoId, resultado.aprobado ? 'aprobado' : resultado.motivo ?? 'no aprobado');
+      res.status(200).send('OK');
+    } catch (e) {
+      // 500 → Mercado Pago reintenta más tarde
+      console.error('mercadoPagoWebhook:', e instanceof Error ? e.message : e);
+      res.status(500).send('Error');
+    }
+  },
+);
+
+// ------------------------------------------------------------
+// Flow (flow.cl)
+// ------------------------------------------------------------
+
+/** Token de Flow: alfanumérico (lo genera Flow); se acota por seguridad */
+const REGEX_TOKEN_FLOW = /^[A-Za-z0-9_-]{8,100}$/;
+
+/** Llama a la API de Flow con las credenciales de los secretos */
+async function llamarFlowApi(
+  ruta: string,
+  params: Record<string, string>,
+  metodo: 'GET' | 'POST',
+): Promise<Record<string, unknown>> {
+  const apiKey = process.env.FLOW_API_KEY;
+  const secretKey = process.env.FLOW_SECRET_KEY;
+  if (!apiKey || !secretKey) throw new Error('FLOW_API_KEY / FLOW_SECRET_KEY no configurados');
+  return llamarFlow(ruta, params, metodo, apiKey, secretKey);
+}
+
+interface ResultadoPagoFlow {
+  aprobado: boolean;
+  pedidoId: string;
+  codigoAutorizacion?: string;
+  monto?: number;
+}
+
+/**
+ * Consulta el estado real de una orden en Flow (getStatus) y, si está
+ * pagada con el monto correcto, marca el pedido (idempotente). La usan
+ * el webhook (urlConfirmation) y flowConfirmar (al volver el cliente).
+ */
+async function verificarPagoFlow(token: string): Promise<ResultadoPagoFlow> {
+  const datos = await llamarFlowApi('/payment/getStatus', { token }, 'GET');
+  const status = Number(datos.status); // 1 pendiente, 2 pagada, 3 rechazada, 4 anulada
+  const pedidoId = String(datos.commerceOrder ?? '');
+  const montoFlow = Number(datos.amount ?? 0);
+  const flowOrder = datos.flowOrder != null ? String(datos.flowOrder) : token;
+  if (!REGEX_ID_PEDIDO.test(pedidoId)) return { aprobado: false, pedidoId: '' };
+
+  const pedidoRef = db.collection('pedidos').doc(pedidoId);
+  const snap = await pedidoRef.get();
+  if (!snap.exists) return { aprobado: false, pedidoId };
+  const pedido = snap.data() as PedidoGuardado;
+  if (ESTADOS_PAGADOS.includes(pedido.estado)) {
+    return { aprobado: true, pedidoId, codigoAutorizacion: pedido.referenciaPago, monto: pedido.total };
+  }
+  if (pedido.origen !== 'servidor' || pedido.metodoPago !== 'flow') return { aprobado: false, pedidoId };
+
+  const aprobado = evaluarAprobacionFlow(status, montoFlow, pedido.total);
+  if (aprobado) {
+    await marcarPagado(pedidoRef, flowOrder);
+    await descontarStockPedido(pedidoRef);
+  } else if (status === 2) {
+    console.warn('Flow: orden pagada con monto distinto', pedidoId, montoFlow, pedido.total);
+  }
+  const resultado: ResultadoPagoFlow = { aprobado, pedidoId, monto: montoFlow };
+  if (aprobado) resultado.codigoAutorizacion = flowOrder;
+  return resultado;
+}
+
+// Flow: crear orden de pago
+export const flowCrear = onRequest(
+  { ...OPCIONES_BASE, secrets: [FLOW_API_KEY, FLOW_SECRET_KEY] },
+  async (req, res) => {
+    if (manejarCors(req, res)) return;
+    try {
+      const pedidoId = leerPedidoId(req.body);
+      if (!pedidoId) { res.status(400).json({ error: 'Falta el número de pedido' }); return; }
+      const pedidoRef = db.collection('pedidos').doc(pedidoId);
+      const snap = await pedidoRef.get();
+      if (!snap.exists) { res.status(404).json({ error: 'Pedido no encontrado' }); return; }
+      const pedido = snap.data() as PedidoGuardado;
+      const motivo = motivoNoPagable(pedido, 'flow');
+      if (motivo) { res.status(409).json({ error: motivo }); return; }
+
+      // Flow vuelve con un POST que Hosting no acepta: pasa por flowRetorno,
+      // que redirige al sitio (al origen de la lista blanca que inició el pago)
+      const origen = origenRetorno(req.get('origin'), origenesPermitidos());
+      const datos = await llamarFlowApi('/payment/create', {
+        commerceOrder: pedidoId,
+        subject: `Pedido ${pedidoId}`,
+        currency: 'CLP',
+        amount: String(Math.round(pedido.total)),
+        email: pedido.emailCliente ?? '',
+        urlConfirmation: urlFuncion('flowWebhook'),
+        urlReturn: `${urlFuncion('flowRetorno')}?o=${encodeURIComponent(origen)}`,
+      }, 'POST');
+      if (typeof datos.url !== 'string' || typeof datos.token !== 'string') {
+        console.error('flowCrear: respuesta inesperada de Flow', Object.keys(datos));
+        res.status(502).json({ error: 'Flow no devolvió una URL de pago válida' });
+        return;
+      }
+      await pedidoRef.update({ intentosPago: FieldValue.arrayUnion(datos.token) });
+      res.json({ url: datos.url, token: datos.token });
+    } catch (e) {
+      console.error('flowCrear:', e instanceof Error ? e.message : e);
+      res.status(500).json({ error: 'No se pudo crear la orden de pago en Flow' });
+    }
+  },
+);
+
+// Flow: confirmar al volver el cliente (verifica contra la API, idempotente)
+export const flowConfirmar = onRequest(
+  { ...OPCIONES_BASE, secrets: [FLOW_API_KEY, FLOW_SECRET_KEY] },
+  async (req, res) => {
+    if (manejarCors(req, res)) return;
+    try {
+      const token = (req.body as { token?: unknown } | undefined)?.token;
+      if (typeof token !== 'string' || !REGEX_TOKEN_FLOW.test(token)) {
+        res.status(400).json({ error: 'Falta el token de la transacción' });
+        return;
+      }
+      res.json(await verificarPagoFlow(token));
+    } catch (e) {
+      console.error('flowConfirmar:', e instanceof Error ? e.message : e);
+      res.status(500).json({ error: 'No se pudo confirmar el pago con Flow' });
+    }
+  },
+);
+
+// Flow: webhook servidor a servidor (urlConfirmation), POST con token
+export const flowWebhook = onRequest(
+  { ...OPCIONES_BASE, secrets: [FLOW_API_KEY, FLOW_SECRET_KEY] },
+  async (req, res) => {
+    try {
+      const token = (req.body as { token?: unknown } | undefined)?.token;
+      if (typeof token !== 'string' || !REGEX_TOKEN_FLOW.test(token)) { res.status(400).send('Falta token'); return; }
+      const resultado = await verificarPagoFlow(token);
+      console.info('flowWebhook:', resultado.pedidoId, resultado.aprobado ? 'aprobado' : 'no aprobado');
+      res.status(200).send('OK');
+    } catch (e) {
+      console.error('flowWebhook:', e instanceof Error ? e.message : e);
+      res.status(500).send('Error');
+    }
+  },
+);
+
+// Flow: retorno del navegador (POST de Flow) → redirección 303 al sitio
+export const flowRetorno = onRequest(
+  { ...OPCIONES_BASE },
+  async (req, res) => {
+    const cuerpo = (req.body ?? {}) as { token?: unknown };
+    const token = typeof cuerpo.token === 'string' ? cuerpo.token : req.query.token;
+    const o = typeof req.query.o === 'string' ? req.query.o : undefined;
+    const origen = origenRetorno(o, origenesPermitidos());
+    const destino = typeof token === 'string' && REGEX_TOKEN_FLOW.test(token)
+      ? `${origen}/pago/retorno?flow=1&token=${encodeURIComponent(token)}`
+      : `${origen}/pago/retorno?flow=1`;
+    res.redirect(303, destino);
   },
 );
 
@@ -540,9 +796,30 @@ export const generarPdfCotizacion = onRequest(
   async (req, res) => {
     if (manejarCors(req, res)) return;
     try {
-      const { cotizacionId } = req.body as { cotizacionId: string };
+      // Solo el dueño de la cotización o un admin (CN-009)
+      const coincide = /^Bearer (.+)$/.exec(req.get('authorization') ?? '');
+      if (!coincide) { res.status(401).json({ error: 'Ingresa a tu cuenta para descargar la cotización.' }); return; }
+      let uid: string;
+      try {
+        uid = (await getAuth().verifyIdToken(coincide[1])).uid;
+      } catch {
+        res.status(401).json({ error: 'Tu sesión expiró. Vuelve a ingresar.' });
+        return;
+      }
+      const cotizacionId = (req.body as { cotizacionId?: unknown } | undefined)?.cotizacionId;
+      if (typeof cotizacionId !== 'string' || !/^[A-Za-z0-9]{1,64}$/.test(cotizacionId)) {
+        res.status(400).json({ error: 'Falta la cotización' });
+        return;
+      }
       const snap = await db.collection('cotizaciones').doc(cotizacionId).get();
       if (!snap.exists) {
+        res.status(404).json({ error: 'Cotización no encontrada' });
+        return;
+      }
+      const esDueno = (snap.data() as { uid?: string }).uid === uid;
+      const esAdmin = !esDueno && (await db.collection('usuarios').doc(uid).get()).data()?.rol === 'admin';
+      if (!esDueno && !esAdmin) {
+        // Misma respuesta que "no existe": no revela cotizaciones ajenas
         res.status(404).json({ error: 'Cotización no encontrada' });
         return;
       }
@@ -615,7 +892,8 @@ export const generarPdfCotizacion = onRequest(
       const buffer = await terminado;
       const archivo = getStorage().bucket().file(`cotizaciones/${cot.folio}.pdf`);
       await archivo.save(buffer, { contentType: 'application/pdf' });
-      const [url] = await archivo.getSignedUrl({ action: 'read', expires: '2100-01-01' });
+      // URL firmada de corta duración: se puede volver a generar cuando se necesite
+      const [url] = await archivo.getSignedUrl({ action: 'read', expires: Date.now() + 7 * 24 * 60 * 60 * 1000 });
       await snap.ref.update({ pdfUrl: url });
       res.json({ pdfUrl: url });
     } catch (e) {
